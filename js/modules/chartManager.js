@@ -504,11 +504,8 @@ const ChartManager = (sandbox) => {
     });
     sandbox.publish("toggle-raw-chart-export-button", { disabled: false });
 
-    // 將解析結果發布出去，讓 UI Manager 可以儲存
     sandbox.publish("raw-csv-data-parsed", results);
   };
-
-  // _handleRawCsvImport 已被移除，因為它的職責轉移到了 CsvHandler
 
   const _exportMainChart = () => {
     if (!temperatureChartInstance) {
@@ -621,7 +618,7 @@ const ChartManager = (sandbox) => {
     init: () => {
       console.log("ChartManager: 模組初始化完成");
 
-      // ★ 最終修正：訂閱由 CsvHandler 發來的新事件
+      // ★ 最終修正：只訂閱由 CsvHandler 發來的新事件
       sandbox.subscribe("raw-data-parsed-for-charting", _plotRawData);
 
       sandbox.subscribe("data-updated", (data) => {
@@ -637,6 +634,7 @@ const ChartManager = (sandbox) => {
         _updateMainChart(null);
         _plotRawData(null);
       });
+      // 注意：這裡的 plot-raw-data-chart 是為了兼容舊的、從歷史紀錄中讀取圖表的功能
       sandbox.subscribe("plot-raw-data-chart", _plotRawData);
       sandbox.subscribe("request-export-main-chart", _exportMainChart);
       sandbox.subscribe("request-export-raw-chart", _exportRawChart);
