@@ -1,4 +1,4 @@
-// /js/modules/chartManager.js (已整合檢視 Raw Data 功能)
+// /js/modules/chartManager.js (職責簡化，只負責繪圖)
 
 import { techTempPoints } from "./config.js";
 import * as utils from "./utils.js";
@@ -7,7 +7,6 @@ import * as utils from "./utils.js";
 const mainChartNoDataPlugin = {
   id: "mainChartNoData",
   afterDraw: (chart) => {
-    // 檢查所有數據集是否都沒有有效的數據點
     const hasData = chart.data.datasets.some(
       (ds) => ds.data && ds.data.some((point) => point !== null)
     );
@@ -30,22 +29,22 @@ const mainChartNoDataPlugin = {
 
 const ChartManager = (sandbox) => {
   // --- 模組私有屬性 ---
-  let temperatureChartInstance = null; // 主圖表（技術溫測實溫）的實例
-  let rawTemperatureChartInstance = null; // 原始數據圖表的實例
-  let airVolumeCompareChartInstance = null; // 風量比較圖的實例
-  let tempCompareChartInstance = null; // 溫度比較圖的實例
-  let datasetVisibility = {}; // 記住主圖表各數據線的顯示/隱藏狀態
-  let rawDatasetVisibility = {}; // 記住原始數據圖表各數據線的顯示/隱藏狀態
+  let temperatureChartInstance = null;
+  let rawTemperatureChartInstance = null;
+  let airVolumeCompareChartInstance = null;
+  let tempCompareChartInstance = null;
+  let datasetVisibility = {};
+  let rawDatasetVisibility = {};
 
   const _getTimestamp = () => {
     const now = new Date();
-    const YYYY = now.getFullYear();
+    const yyyy = now.getFullYear();
     const MM = String(now.getMonth() + 1).padStart(2, "0");
     const DD = String(now.getDate()).padStart(2, "0");
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
-    return `${YYYY}${MM}${DD}_${hh}${mm}${ss}`;
+    return `${yyyy}${MM}${DD}_${hh}${mm}${ss}`;
   };
 
   const _updateAirVolumeComparisonChart = (analysisData) => {
@@ -251,7 +250,6 @@ const ChartManager = (sandbox) => {
       });
     }
 
-    // ▼▼▼【★★★ 重新加入的程式碼區塊 ★★★】▼▼▼
     const machineDisplayLabel = "機台顯示溫度";
     const machineDisplayData = chartLabels.map((label) => {
       if (recordToChart) {
@@ -288,7 +286,6 @@ const ChartManager = (sandbox) => {
       order: 1,
       hidden: isMachineHidden,
     });
-    // ▲▲▲【★★★ 重新加入結束 ★★★】▲▲▲
 
     let yMin = 0,
       yMax = 10;
@@ -412,6 +409,7 @@ const ChartManager = (sandbox) => {
       "rgba(153, 102, 255, 1)",
       "rgba(255, 99, 132, 1)",
     ];
+
     channelColumnsToPlot.forEach((columnKey, index) => {
       if (headersFromPapaParse.includes(columnKey)) {
         foundChannelsCount++;
@@ -437,17 +435,20 @@ const ChartManager = (sandbox) => {
         });
       }
     });
+
     if (foundChannelsCount === 0) {
       sandbox.publish(
         "show-raw-chart-error",
-        `CSV 表頭必須包含至少一個以下欄位: ${channelColumnsToPlot.join(", ")}`
+        `CSV 表頭中必須包含至少一個以下欄位: ${channelColumnsToPlot.join(", ")}`
       );
       return;
     }
+
     const elapsedSeconds = dataRows.map((_, index) => index * 10);
     const maxActualElapsedSeconds =
       elapsedSeconds.length > 0 ? elapsedSeconds[elapsedSeconds.length - 1] : 0;
     let xAxisMax = Math.ceil(maxActualElapsedSeconds / 100.0) * 100 || 100;
+
     const chartData = { labels: elapsedSeconds, datasets: datasets };
     const chartOptions = {
       responsive: true,
@@ -502,7 +503,12 @@ const ChartManager = (sandbox) => {
       options: chartOptions,
     });
     sandbox.publish("toggle-raw-chart-export-button", { disabled: false });
+
+    // 將解析結果發布出去，讓 UI Manager 可以儲存
+    sandbox.publish("raw-csv-data-parsed", results);
   };
+
+  // _handleRawCsvImport 已被移除，因為它的職責轉移到了 CsvHandler
 
   const _exportMainChart = () => {
     if (!temperatureChartInstance) {
@@ -615,6 +621,9 @@ const ChartManager = (sandbox) => {
     init: () => {
       console.log("ChartManager: 模組初始化完成");
 
+      // ★ 最終修正：訂閱由 CsvHandler 發來的新事件
+      sandbox.subscribe("raw-data-parsed-for-charting", _plotRawData);
+
       sandbox.subscribe("data-updated", (data) => {
         _updateMainChart(data ? data.records : []);
         const comparisonData = data ? data.comparisonAnalysis : null;
@@ -628,7 +637,6 @@ const ChartManager = (sandbox) => {
         _updateMainChart(null);
         _plotRawData(null);
       });
-      sandbox.subscribe("raw-csv-data-parsed", _plotRawData);
       sandbox.subscribe("plot-raw-data-chart", _plotRawData);
       sandbox.subscribe("request-export-main-chart", _exportMainChart);
       sandbox.subscribe("request-export-raw-chart", _exportRawChart);
