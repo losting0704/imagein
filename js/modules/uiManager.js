@@ -17,6 +17,7 @@ const UIManager = (sandbox) => {
     _fieldConfigurations: [],
     selectedToCompareIds: [],
     tempRawData: null,
+    _editingRecordId: null, // ★ 1. 新增屬性來儲存正在編輯的紀錄 ID
 
     /**
      * 快取所有需要操作的 DOM 元素。
@@ -83,15 +84,11 @@ const UIManager = (sandbox) => {
       };
     },
 
-    /**
-     * 根據當前乾燥機型號，渲染「風量量測」區塊的網格 (已加入樓層分組與測管深度功能)。
-     * @param {string} dryerModel - 當前選定的乾燥機型號。
-     */
     _renderAirVolumeGrid(dryerModel) {
       const measurements = getAirVolumeMeasurementsByModel(dryerModel);
       const gridContainer = self.dom.airVolumeGrid;
       if (!gridContainer) return;
-      gridContainer.innerHTML = ""; // 清空現有內容
+      gridContainer.innerHTML = "";
 
       const gridHeader = document.createElement("div");
       gridHeader.className = "grid-header-row";
@@ -100,9 +97,7 @@ const UIManager = (sandbox) => {
 
       const groupedByFloor = measurements.reduce((acc, measure) => {
         const floor = measure.floor || "其他";
-        if (!acc[floor]) {
-          acc[floor] = [];
-        }
+        if (!acc[floor]) acc[floor] = [];
         acc[floor].push(measure);
         return acc;
       }, {});
@@ -118,7 +113,6 @@ const UIManager = (sandbox) => {
         "沒量測點",
         "其他",
       ];
-
       floorOrder.forEach((floor) => {
         if (groupedByFloor[floor]) {
           const floorHeader = document.createElement("h3");
@@ -620,32 +614,24 @@ const UIManager = (sandbox) => {
       return true;
     },
 
-    // ★★★ 最終修正點 ★★★
-    // 修改此函式，使其能針對特定區塊提供更大的底部間距
     _toggleAccordion(header) {
       header.classList.toggle("active");
       const content = header.nextElementSibling;
       if (content && content.classList.contains("accordion-content")) {
         if (content.style.maxHeight) {
-          // --- 收合區塊 ---
           content.style.maxHeight = null;
           content.style.paddingTop = null;
           content.style.paddingBottom = null;
         } else {
-          // --- 展開區塊 ---
           content.style.maxHeight = content.scrollHeight + "px";
           content.style.paddingTop = "20px";
-
-          // 檢查父層區塊 ID，決定底部間距
           const parentSection = header.closest(".record-section");
           if (
             parentSection &&
             parentSection.id === "evaluationTeam_technicalWind"
           ) {
-            // 如果是風量量測區塊，給予較大的 70px 間距
-            content.style.paddingBottom = "70px";
+            content.style.paddingBottom = "40px";
           } else {
-            // 其他所有區塊，維持預設的 20px 間距
             content.style.paddingBottom = "20px";
           }
         }
@@ -694,11 +680,16 @@ const UIManager = (sandbox) => {
       self.dom.cancelEditBtn.style.display = "none";
       self.dom.saveDataBtn.style.display = "inline-flex";
       self.tempRawData = null;
+      self._editingRecordId = null; // ★ 清除表單時，一併清除正在編輯的 ID
       sandbox.publish("form-cleared");
     },
 
+    // ★ 2. 修改此函式，以記住正在編輯的紀錄 ID
     _loadDataToForm(record, isForEdit = false) {
       self._clearForm();
+      if (isForEdit) {
+        self._editingRecordId = record.id; // 記住 ID
+      }
       if (record.recordType === "evaluationTeam") {
         self.dom.radioEvaluationTeam.checked = true;
       } else if (record.recordType === "conditionSetting") {
@@ -830,7 +821,6 @@ const UIManager = (sandbox) => {
         sandbox.publish("request-record-type-change");
       });
       sandbox.subscribe("request-view-switch", (data) => {
-        console.log("UIManager: Received view switch request. Data:", data);
         if (data.recordType === "evaluationTeam") {
           self.dom.radioEvaluationTeam.checked = true;
         } else if (data.recordType === "conditionSetting") {
@@ -843,12 +833,6 @@ const UIManager = (sandbox) => {
         self._populateFilterSelect();
         sandbox.publish("request-change-dryer-model", newDryerModel);
         sandbox.publish("request-record-type-change");
-        console.log(
-          "UIManager: UI switched to RecordType:",
-          self.getCurrentRecordType(),
-          "DryerModel:",
-          self.getCurrentDryerModel()
-        );
       });
       sandbox.subscribe("request-change-dryer-model", (model) => {
         const newModel = model.toLowerCase();
@@ -892,9 +876,11 @@ const UIManager = (sandbox) => {
       return self._currentDryerModel;
     },
 
+    // ★ 3. 修改此函式，使其能根據編輯狀態決定 ID
     getRecordDataFromForm() {
       const recordData = {
-        id: crypto.randomUUID(),
+        // 如果是編輯模式，使用儲存的 ID；否則，產生新 ID
+        id: self._editingRecordId || crypto.randomUUID(),
         recordType: self.getCurrentRecordType(),
         dryerModel: self._currentDryerModel.toLowerCase(),
         rtoStatus: document.querySelector('input[name="rtoStatus"]:checked')
