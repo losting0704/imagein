@@ -84,20 +84,20 @@ const UIManager = (sandbox) => {
     },
 
     /**
-     * 根據當前乾燥機型號，渲染「風量量測」區塊的網格 (已加入樓層分組功能)。
+     * 根據當前乾燥機型號，渲染「風量量測」區塊的網格 (已加入樓層分組與測管深度功能)。
      * @param {string} dryerModel - 當前選定的乾燥機型號。
      */
     _renderAirVolumeGrid(dryerModel) {
       const measurements = getAirVolumeMeasurementsByModel(dryerModel);
       const gridContainer = self.dom.airVolumeGrid;
+      if (!gridContainer) return;
       gridContainer.innerHTML = ""; // 清空現有內容
 
       const gridHeader = document.createElement("div");
       gridHeader.className = "grid-header-row";
-      gridHeader.innerHTML = `<span>測量位置</span><span>風管(m)</span><span>面積(㎡)</span><span>風速(m/s)</span><span>溫度(℃)</span><span>風量(Nm³/分)</span>`;
+      gridHeader.innerHTML = `<span>測量位置</span><span>風管(m)</span><span>測管深度(cm)</span><span>面積(㎡)</span><span>風速(m/s)</span><span>溫度(℃)</span><span>風量(Nm³/分)</span>`;
       gridContainer.appendChild(gridHeader);
 
-      // 1. 將測量點按 "floor" 屬性分組
       const groupedByFloor = measurements.reduce((acc, measure) => {
         const floor = measure.floor || "其他";
         if (!acc[floor]) {
@@ -107,7 +107,6 @@ const UIManager = (sandbox) => {
         return acc;
       }, {});
 
-      // 2. 定義樓層的顯示順序
       const floorOrder = [
         "7F",
         "6F",
@@ -122,7 +121,6 @@ const UIManager = (sandbox) => {
 
       floorOrder.forEach((floor) => {
         if (groupedByFloor[floor]) {
-          // 創建樓層標題
           const floorHeader = document.createElement("h3");
           floorHeader.className = "section-header";
           floorHeader.textContent = floor;
@@ -130,12 +128,9 @@ const UIManager = (sandbox) => {
           floorHeader.style.fontSize = "1.1em";
           floorHeader.style.textAlign = "left";
           floorHeader.style.justifyContent = "flex-start";
-          // ★★★ 這就是唯一的修正點 ★★★
-          // 告訴樓層標題，它應該要橫跨整個網格的寬度
           floorHeader.style.gridColumn = "1 / -1";
           gridContainer.appendChild(floorHeader);
 
-          // 渲染該樓層的所有測量點
           groupedByFloor[floor].forEach((measure) => {
             const row = document.createElement("div");
             row.className = "air-measurement-row";
@@ -150,6 +145,8 @@ const UIManager = (sandbox) => {
                 !measure.imageUrl ? "disabled" : ""
               }><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></button></div><span class="fixed-value">${
                 measure.duct
+              }</span><span class="fixed-value">${
+                measure.probeDepth ? measure.probeDepth + " cm" : "N/A"
               }</span><span class="calculated-area">${measure.area.toFixed(
                 3
               )}</span><div class="input-with-error"><input type="number" id="air_speed_${
@@ -162,16 +159,13 @@ const UIManager = (sandbox) => {
             } else {
               const statusText =
                 measure.status === "dangerous" ? "測定危険" : "沒量測點";
-              row.innerHTML = `<div class="location-cell"><span>${measure.label}</span></div><span class="fixed-value">${measure.duct}</span><span class="calculated-area">N/A</span><div class="input-with-error"><input type="text" value="${statusText}" class="styled-input status-text" disabled></div><div class="input-with-error"><input type="text" value="N/A" class="styled-input status-text" disabled></div><span class="calculated-output" id="air_volume_${measure.id}">0.0</span>`;
+              row.innerHTML = `<div class="location-cell"><span>${measure.label}</span></div><span class="fixed-value">${measure.duct}</span><span class="fixed-value">N/A</span><span class="calculated-area">N/A</span><div class="input-with-error"><input type="text" value="${statusText}" class="styled-input status-text" disabled></div><div class="input-with-error"><input type="text" value="N/A" class="styled-input status-text" disabled></div><span class="calculated-output" id="air_volume_${measure.id}">0.0</span>`;
             }
             gridContainer.appendChild(row);
           });
         }
       });
     },
-
-    // ... 此處省略了檔案中其他的函式，它們保持不變 ...
-    // 您只需用這份檔案完整取代舊檔即可，其他函式都已包含在內。
 
     _populateFilterSelect() {
       const currentType = self.getCurrentRecordType();
@@ -194,6 +188,7 @@ const UIManager = (sandbox) => {
         self.dom.filterFieldSelect.add(option);
       });
     },
+
     _renderPagination({ currentPage, totalPages }) {
       if (!self.dom.paginationContainer) return;
       self.dom.paginationContainer.innerHTML = "";
@@ -229,6 +224,7 @@ const UIManager = (sandbox) => {
       }>下一頁 &raquo;</button>`;
       self.dom.paginationContainer.innerHTML = paginationHtml;
     },
+
     _renderTable({
       records,
       editingIndex,
@@ -349,6 +345,7 @@ const UIManager = (sandbox) => {
         console.error("UIManager: _renderTable 渲染時發生嚴重錯誤:", error);
       }
     },
+
     _handleCompareSelection(recordId) {
       const index = self.selectedToCompareIds.indexOf(recordId);
       if (index > -1) {
@@ -366,6 +363,7 @@ const UIManager = (sandbox) => {
         sandbox.publish("request-clear-compare-chart");
       }
     },
+
     _setDateTimeToNow() {
       const now = new Date();
       const timezoneOffset = now.getTimezoneOffset() * 60000;
@@ -373,6 +371,7 @@ const UIManager = (sandbox) => {
       const formattedDateTime = localTime.toISOString().slice(0, 16);
       self.dom.dateTimeInput.value = formattedDateTime;
     },
+
     _updateAirVolumeRow(measureId) {
       const measure = getAirVolumeMeasurementsByModel(
         self._currentDryerModel
@@ -395,6 +394,7 @@ const UIManager = (sandbox) => {
         volumeOutput.textContent = isNaN(volume) ? "0.0" : volume.toFixed(1);
       }
     },
+
     _updateTechTempRow(pointId) {
       const inputs = Array.from({ length: 5 }, (_, i) =>
         document.getElementById(`techTemp_${pointId}_${i + 1}`)
@@ -413,6 +413,7 @@ const UIManager = (sandbox) => {
         }
       }
     },
+
     _renderAirAndExternalInputs(dryerModel) {
       if (!self.dom.airAndExternalGrid) return;
       self.dom.airAndExternalGrid.innerHTML = "";
@@ -442,6 +443,7 @@ const UIManager = (sandbox) => {
         self.dom.airAndExternalGrid.appendChild(formGroup);
       });
     },
+
     _generateTechTempInputs() {
       self.dom.techTempGrid.innerHTML = `<div class="record-label">紀錄-每分</div><div class="grid-header">1(右)</div><div class="grid-header">2</div><div class="grid-header">3(中)</div><div class="grid-header">4</div><div class="grid-header">5(左)</div><div class="grid-header">溫差</div>`;
       techTempPoints.forEach((point) => {
@@ -462,6 +464,7 @@ const UIManager = (sandbox) => {
         self.dom.techTempGrid.appendChild(diffInputWrapper);
       });
     },
+
     _generateDamperOpeningInputs() {
       self.dom.damperOpeningGrid.innerHTML = "";
       self._fieldConfigurations = generateFieldConfigurations(
@@ -485,6 +488,7 @@ const UIManager = (sandbox) => {
         self.dom.damperOpeningGrid.appendChild(formGroup);
       });
     },
+
     _renderHmiSections(dryerModel) {
       self.dom.hmiContainer.innerHTML = "";
       const layouts = hmiLayouts[dryerModel] || {};
@@ -520,6 +524,7 @@ const UIManager = (sandbox) => {
         self.dom.hmiContainer.appendChild(sectionWrapper);
       }
     },
+
     _toggleSections() {
       const selectedType = self.getCurrentRecordType();
       document.body.classList.toggle(
@@ -537,11 +542,13 @@ const UIManager = (sandbox) => {
           selectedType === "conditionSetting" ? "block" : "none";
       }
     },
+
     _showMessage({ text, type = "info" }) {
       self.dom.messageBox.textContent = text;
       self.dom.messageBox.className = `message-box visible ${type}`;
       setTimeout(() => self.dom.messageBox.classList.remove("visible"), 3000);
     },
+
     _showConfirmModal({ message, onConfirm, onCancel }) {
       self.dom.confirmModalMessage.textContent = message;
       self.dom.confirmModalOverlay.classList.add("visible");
@@ -564,11 +571,13 @@ const UIManager = (sandbox) => {
         once: true,
       });
     },
+
     _showImageModal({ src, caption }) {
       self.dom.modalImage.src = src;
       self.dom.modalCaption.textContent = caption;
       self.dom.imageModalOverlay.classList.add("visible");
     },
+
     _validateInput(inputElement) {
       self._fieldConfigurations = generateFieldConfigurations(
         self._currentDryerModel
@@ -610,21 +619,39 @@ const UIManager = (sandbox) => {
       }
       return true;
     },
+
+    // ★★★ 最終修正點 ★★★
+    // 修改此函式，使其能針對特定區塊提供更大的底部間距
     _toggleAccordion(header) {
       header.classList.toggle("active");
       const content = header.nextElementSibling;
       if (content && content.classList.contains("accordion-content")) {
         if (content.style.maxHeight) {
+          // --- 收合區塊 ---
           content.style.maxHeight = null;
           content.style.paddingTop = null;
           content.style.paddingBottom = null;
         } else {
+          // --- 展開區塊 ---
           content.style.maxHeight = content.scrollHeight + "px";
           content.style.paddingTop = "20px";
-          content.style.paddingBottom = "20px";
+
+          // 檢查父層區塊 ID，決定底部間距
+          const parentSection = header.closest(".record-section");
+          if (
+            parentSection &&
+            parentSection.id === "evaluationTeam_technicalWind"
+          ) {
+            // 如果是風量量測區塊，給予較大的 65px 間距
+            content.style.paddingBottom = "65px";
+          } else {
+            // 其他所有區塊，維持預設的 20px 間距
+            content.style.paddingBottom = "20px";
+          }
         }
       }
     },
+
     _clearForm() {
       document
         .querySelectorAll(
@@ -669,6 +696,7 @@ const UIManager = (sandbox) => {
       self.tempRawData = null;
       sandbox.publish("form-cleared");
     },
+
     _loadDataToForm(record, isForEdit = false) {
       self._clearForm();
       if (record.recordType === "evaluationTeam") {
@@ -725,6 +753,7 @@ const UIManager = (sandbox) => {
       }
       sandbox.publish("request-chart-preview", record);
     },
+
     init() {
       console.log("UIManager: 模組初始化完成");
       self._cacheDom();
@@ -744,6 +773,7 @@ const UIManager = (sandbox) => {
       self._setDateTimeToNow();
       self._subscribeToEvents();
     },
+
     _subscribeToEvents() {
       sandbox.subscribe("request-validate-field", (data) => {
         if (data && data.element) self._validateInput(data.element);
@@ -847,18 +877,21 @@ const UIManager = (sandbox) => {
         self._toggleAccordion(header)
       );
     },
+
     getCurrentRecordType() {
       const checkedRadio = document.querySelector(
         'input[name="recordType"]:checked'
       );
       return checkedRadio ? checkedRadio.value : "evaluationTeam";
     },
+
     getCurrentDryerModel() {
       if (self.dom.dryerModelSelect && self.dom.dryerModelSelect.value) {
         return self.dom.dryerModelSelect.value.toLowerCase();
       }
       return self._currentDryerModel;
     },
+
     getRecordDataFromForm() {
       const recordData = {
         id: crypto.randomUUID(),
@@ -942,6 +975,7 @@ const UIManager = (sandbox) => {
       }
       return recordData;
     },
+
     validateForm() {
       self._fieldConfigurations = generateFieldConfigurations(
         self._currentDryerModel
@@ -958,6 +992,7 @@ const UIManager = (sandbox) => {
       });
       return isValid;
     },
+
     getFilters() {
       return {
         startDate: self.dom.filterStartDate.value,
@@ -970,6 +1005,7 @@ const UIManager = (sandbox) => {
         remark: self.dom.filterRemarkKeyword.value.trim(),
       };
     },
+
     resetFilters() {
       self.dom.filterStartDate.value = "";
       self.dom.filterEndDate.value = "";
@@ -981,6 +1017,7 @@ const UIManager = (sandbox) => {
       self.dom.filterRemarkKeyword.value = "";
       sandbox.publish("request-apply-filters", {});
     },
+
     getDomElements: () => self.dom,
     getCurrentFieldConfigurations: () => self._fieldConfigurations,
   };

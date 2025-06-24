@@ -447,7 +447,8 @@ select.styled-input {
 }
 .air-volume-grid {
   display: grid;
-  grid-template-columns: 200px repeat(5, 1fr);
+  /* ★ 確認此處已修改為 repeat(6, 1fr) */
+  grid-template-columns: 200px repeat(6, 1fr);
   gap: 10px;
   margin-bottom: 25px;
   padding: 15px;
