@@ -51,7 +51,7 @@ const UIManager = (sandbox) => {
         csvFileInput: D("csvFileInput"),
         exportCsvBtn: D("exportCsvBtn"),
         exportChartBtn: D("exportChartBtn"),
-        rawCsvFileInput: D("rawCsvFileInput"),
+        rawCsvFileInput: D("rawCsvFileInput"), // 這個 ID 應該是正確的
         exportRawChartButton: D("exportRawChartButton"),
         allInputFieldsContainer: document.querySelector(".container"),
         emptyStateMessage: D("emptyStateMessage"),
@@ -78,9 +78,9 @@ const UIManager = (sandbox) => {
         mergeToMasterBtn: D("mergeToMasterBtn"),
         exportForPowerBIBtn: D("exportForPowerBIBtn"),
         exportDailyJsonBtn: D("exportDailyJsonBtn"),
-        historyCsvInput: D("historyCsvInput"),
-        masterJsonInput: D("masterJsonInput"),
-        dailyJsonInput: D("dailyJsonInput"),
+        historyCsvInput: D("historyCsvInputForMasterCreation"), // 更新此處
+        masterJsonInput: D("masterJsonInputForLoad"), // 更新此處
+        dailyJsonInput: D("dailyJsonInputForMerge"), // 更新此處
       };
     },
 

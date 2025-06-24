@@ -1204,25 +1204,27 @@
         </div>
       </div>
 
+      <!-- 修正後的檔案輸入框：確保 ID 唯一，並與其用途名稱相符 -->
       <input
         type="file"
-        id="historyCsvInput"
+        id="historyCsvInputForMasterCreation"
         accept=".csv"
         style="display: none"
         multiple
       />
       <input
         type="file"
-        id="masterJsonInput"
+        id="masterJsonInputForLoad"
         accept=".json"
         style="display: none"
       />
       <input
         type="file"
-        id="dailyJsonInput"
+        id="dailyJsonInputForMerge"
         accept=".json"
         style="display: none"
       />
+
       <div id="messageBox" class="message-box" aria-live="polite"></div>
 
       <div id="common_history">
@@ -1417,6 +1419,8 @@
       <div class="spinner"></div>
     </div>
 
+    <!-- 移除重複的檔案輸入框，避免 ID 衝突 -->
+    <!-- 
     <input
       type="file"
       id="historyCsvInput"
@@ -1436,6 +1440,7 @@
       accept=".json"
       style="display: none"
     />
+    -->
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script type="module" src="./js/main.js"></script>
