@@ -17,7 +17,7 @@ const UIManager = (sandbox) => {
     _fieldConfigurations: [],
     selectedToCompareIds: [],
     tempRawData: null,
-    _editingRecordId: null, // ★ 1. 新增屬性來儲存正在編輯的紀錄 ID
+    _editingRecordId: null,
 
     /**
      * 快取所有需要操作的 DOM 元素。
@@ -616,7 +616,15 @@ const UIManager = (sandbox) => {
 
     _toggleAccordion(header) {
       header.classList.toggle("active");
-      const content = header.nextElementSibling;
+
+      let content = header.nextElementSibling;
+      if (!content || !content.classList.contains("accordion-content")) {
+        const parentWrapper = header.closest(".header-wrapper");
+        if (parentWrapper) {
+          content = parentWrapper.nextElementSibling;
+        }
+      }
+
       if (content && content.classList.contains("accordion-content")) {
         if (content.style.maxHeight) {
           content.style.maxHeight = null;
@@ -625,6 +633,7 @@ const UIManager = (sandbox) => {
         } else {
           content.style.maxHeight = content.scrollHeight + "px";
           content.style.paddingTop = "20px";
+
           const parentSection = header.closest(".record-section");
           if (
             parentSection &&
@@ -680,15 +689,14 @@ const UIManager = (sandbox) => {
       self.dom.cancelEditBtn.style.display = "none";
       self.dom.saveDataBtn.style.display = "inline-flex";
       self.tempRawData = null;
-      self._editingRecordId = null; // ★ 清除表單時，一併清除正在編輯的 ID
+      self._editingRecordId = null;
       sandbox.publish("form-cleared");
     },
 
-    // ★ 2. 修改此函式，以記住正在編輯的紀錄 ID
     _loadDataToForm(record, isForEdit = false) {
       self._clearForm();
       if (isForEdit) {
-        self._editingRecordId = record.id; // 記住 ID
+        self._editingRecordId = record.id;
       }
       if (record.recordType === "evaluationTeam") {
         self.dom.radioEvaluationTeam.checked = true;
@@ -754,6 +762,15 @@ const UIManager = (sandbox) => {
         .join("");
       self.dom.dryerModelSelect.value = "vt8";
       self._currentDryerModel = "vt8";
+
+      // ★★★ 關鍵修正：設定初始的 Damper 佈局圖路徑 ★★★
+      if (self.dom.viewDamperLayoutBtn) {
+        const initialModel = self._currentDryerModel;
+        const imagePath =
+          damperLayoutsByModel[initialModel] || "./img/damper-layout.jpg";
+        self.dom.viewDamperLayoutBtn.dataset.imageSrc = imagePath;
+      }
+
       self._renderAirAndExternalInputs(self._currentDryerModel);
       self._renderAirVolumeGrid(self._currentDryerModel);
       self._generateTechTempInputs();
@@ -876,10 +893,8 @@ const UIManager = (sandbox) => {
       return self._currentDryerModel;
     },
 
-    // ★ 3. 修改此函式，使其能根據編輯狀態決定 ID
     getRecordDataFromForm() {
       const recordData = {
-        // 如果是編輯模式，使用儲存的 ID；否則，產生新 ID
         id: self._editingRecordId || crypto.randomUUID(),
         recordType: self.getCurrentRecordType(),
         dryerModel: self._currentDryerModel.toLowerCase(),
