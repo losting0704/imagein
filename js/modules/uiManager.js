@@ -642,8 +642,8 @@ const UIManager = (sandbox) => {
             parentSection &&
             parentSection.id === "evaluationTeam_technicalWind"
           ) {
-            // 如果是風量量測區塊，給予較大的 65px 間距
-            content.style.paddingBottom = "65px";
+            // 如果是風量量測區塊，給予較大的 70px 間距
+            content.style.paddingBottom = "70px";
           } else {
             // 其他所有區塊，維持預設的 20px 間距
             content.style.paddingBottom = "20px";

@@ -348,7 +348,6 @@ h2 {
   display: grid;
   grid-template-columns: 120px repeat(5, 1fr) 100px;
   gap: 10px;
-  margin-bottom: 25px;
   padding: 15px;
   background-color: var(--bg-input-area);
   border-radius: var(--border-radius-section);
@@ -447,10 +446,8 @@ select.styled-input {
 }
 .air-volume-grid {
   display: grid;
-  /* ★ 確認此處已修改為 repeat(6, 1fr) */
   grid-template-columns: 200px repeat(6, 1fr);
   gap: 10px;
-  margin-bottom: 25px;
   padding: 15px;
   background-color: var(--bg-input-area);
   border-radius: var(--border-radius-section);
@@ -1478,12 +1475,14 @@ div[aria-label="Chart legend"] li:focus {
   針對特定區塊的微調
 --- */
 
-/* 解決風量量測區塊展開後，底部內容可能被截斷的問題 */
+/* ★★★ 最終修正點 ★★★ */
+/* 移除此處的特殊規則，將邏輯交給 uiManager.js 處理 */
+/*
 #evaluationTeam_technicalWind .accordion-toggle.active + .accordion-content {
-  padding-bottom: 40px; /* 只在展開時，才增加這個額外的底部內距 */
+  padding-bottom: 40px !important;
 }
+*/
 
-/* ★★★ 以下是本次新增的規則 ★★★ */
 /* --- Damper 標題與圖示按鈕的排版修正 --- */
 
 /* 1. 定義新包裝容器的 flexbox 佈局 */
