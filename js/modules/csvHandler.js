@@ -1,4 +1,4 @@
-// /js/modules/csvHandler.js
+// /js/modules/csvHandler.js (修正後的版本)
 
 import { generateFieldConfigurations } from "./config.js";
 import * as utils from "./utils.js";
@@ -159,6 +159,7 @@ const CsvHandler = (sandbox) => {
     });
   };
 
+  // 這是之前未被呼叫的函式
   const _handleRawCsvImport = ({ file }) => {
     if (!file) return;
     sandbox.publish("show-loader");
@@ -585,7 +586,11 @@ const CsvHandler = (sandbox) => {
       }
       console.log("CsvHandler: 模組初始化完成");
 
-      sandbox.subscribe("request-import-raw-csv", _handleRawCsvImport);
+      // **** 修正這裡：使用箭頭函式包裝，確保 `this` 上下文正確或直接訪問到 `_handleRawCsvImport`
+      sandbox.subscribe("request-import-raw-csv", (data) =>
+        _handleRawCsvImport(data)
+      );
+
       sandbox.subscribe("request-load-master-db-start", _startLoadMasterDbFlow);
       sandbox.subscribe(
         "request-create-master-db-start",
