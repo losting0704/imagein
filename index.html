@@ -1036,6 +1036,8 @@
 
       <div id="hmi-sections-container"></div>
 
+      <div id="rawDataStatusContainer" class="raw-data-status"></div>
+
       <div id="common_buttons" class="button-group">
         <button id="saveDataBtn" class="button button-save">
           <svg
@@ -1116,12 +1118,7 @@
             <line x1="12" y1="3" x2="12" y2="15"></line></svg
           ><span>匯入 CSV</span>
         </button>
-        <input
-          type="file"
-          id="csvFileInput"
-          accept=".csv"
-          style="display: none"
-        />
+
         <button id="exportChartBtn" class="button button-info">
           <svg
             class="icon"
@@ -1203,27 +1200,6 @@
           </button>
         </div>
       </div>
-
-      <!-- 修正後的檔案輸入框：確保 ID 唯一，並與其用途名稱相符 -->
-      <input
-        type="file"
-        id="historyCsvInputForMasterCreation"
-        accept=".csv"
-        style="display: none"
-        multiple
-      />
-      <input
-        type="file"
-        id="masterJsonInputForLoad"
-        accept=".json"
-        style="display: none"
-      />
-      <input
-        type="file"
-        id="dailyJsonInputForMerge"
-        accept=".json"
-        style="display: none"
-      />
 
       <div id="messageBox" class="message-box" aria-live="polite"></div>
 
@@ -1338,15 +1314,25 @@
         <canvas id="temperatureChart"></canvas>
       </div>
 
+      <!-- ▼▼▼【核心修改】此區塊現在只負責顯示圖表和匯出按鈕 ▼▼▼ -->
       <div class="raw-data-chart-section">
-        <h2>匯入原始溫測數據圖表 (CSV)</h2>
+        <h2>貼上原始溫測數據 (CSV)</h2>
         <p>
-          請選擇您的溫測機原始 CSV 檔案。圖表將依照第一筆資料為 0
-          秒，後續每筆資料遞增 10 秒的規則繪製，X 軸將以分鐘顯示。
+          請將從溫測機複製的完整 CSV
+          文字內容貼到下方的文字區塊中，然後點擊按鈕生成圖表。
         </p>
-        <label
-          for="rawCsvFileInput"
-          class="button button-info file-upload-label"
+
+        <textarea
+          id="rawCsvTextArea"
+          class="styled-textarea"
+          rows="10"
+          placeholder="請在此處貼上 CSV 資料..."
+        ></textarea>
+
+        <button
+          id="generateRawChartFromTextBtn"
+          class="button button-info"
+          style="margin-top: 15px"
         >
           <svg
             class="icon"
@@ -1357,18 +1343,14 @@
             stroke-linecap="round"
             stroke-linejoin="round"
           >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
+            <path
+              d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+            ></path>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
           </svg>
-          <span>選擇 CSV 檔案</span>
-        </label>
-        <input
-          type="file"
-          id="rawCsvFileInput"
-          accept=".csv"
-          style="display: none"
-        />
+          <span>從貼上內容生成圖表</span>
+        </button>
+
         <div id="rawChartErrorMessages" aria-live="polite"></div>
         <div id="rawTemperatureChartContainer">
           <canvas id="rawTemperatureChart"></canvas>
@@ -1389,10 +1371,12 @@
           >
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line></svg
-          ><span>匯出原始圖表 (PNG)</span>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>匯出原始圖表 (PNG)</span>
         </button>
       </div>
+      <!-- ▲▲▲ 修改結束 ▲▲▲ -->
     </div>
 
     <div id="confirmModalOverlay" class="modal-overlay">
@@ -1419,28 +1403,19 @@
       <div class="spinner"></div>
     </div>
 
-    <!-- 移除重複的檔案輸入框，避免 ID 衝突 -->
-    <!-- 
-    <input
-      type="file"
-      id="historyCsvInput"
-      accept=".csv"
-      style="display: none"
-      multiple
-    />
-    <input
-      type="file"
-      id="masterJsonInput"
-      accept=".json"
-      style="display: none"
-    />
-    <input
-      type="file"
-      id="dailyJsonInput"
-      accept=".json"
-      style="display: none"
-    />
-    -->
+    <!-- 集中管理所有隱藏的檔案輸入框 -->
+    <div style="display: none">
+      <input type="file" id="csvFileInput" accept=".csv" />
+      <!-- rawCsvFileInput 已被 textarea 取代 -->
+      <input
+        type="file"
+        id="historyCsvInputForMasterCreation"
+        accept=".csv"
+        multiple
+      />
+      <input type="file" id="masterJsonInputForLoad" accept=".json" />
+      <input type="file" id="dailyJsonInputForMerge" accept=".json" />
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script type="module" src="./js/main.js"></script>

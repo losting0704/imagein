@@ -1,7 +1,7 @@
 // /js/sw.js
 
 // ▼▼▼ 已將 v4 更新為 v5，以強制更新快取 ▼▼▼
-const CACHE_NAME = "dryer-logger-cache-v5";
+const CACHE_NAME = "dryer-logger-cache-v8";
 // ▲▲▲ 修改結束 ▲▲▲
 
 const FILES_TO_CACHE = [

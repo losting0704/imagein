@@ -1524,5 +1524,39 @@ div[aria-label="Chart legend"] li:focus {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
+/* /css/style.css */
 
+/* ... 在檔案結尾處加上 ... */
+.raw-data-status {
+  padding: 10px 15px;
+  background-color: #e0f2f1; /* 類似 info message 的背景色 */
+  border: 1px solid var(--border-info);
+  border-radius: var(--border-radius-section);
+  margin: 20px auto;
+  text-align: center;
+  font-weight: 500;
+  display: none; /* 預設隱藏 */
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
 
+.raw-data-status.visible {
+  display: flex; /* 當有內容時顯示 */
+}
+
+.raw-data-status .clear-raw-data-btn {
+  background: none;
+  border: 1px solid var(--text-error);
+  color: var(--text-error);
+  padding: 3px 8px;
+  font-size: 0.8em;
+  border-radius: var(--border-radius-button);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.raw-data-status .clear-raw-data-btn:hover {
+  background: var(--text-error);
+  color: white;
+}
