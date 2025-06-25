@@ -1,4 +1,4 @@
-// /js/modules/chartManager.js (已整合檢視 Raw Data 功能)
+// /js/modules/chartManager.js (最終修正版本)
 
 import { techTempPoints } from "./config.js";
 import * as utils from "./utils.js";
@@ -7,7 +7,6 @@ import * as utils from "./utils.js";
 const mainChartNoDataPlugin = {
   id: "mainChartNoData",
   afterDraw: (chart) => {
-    // 檢查所有數據集是否都沒有有效的數據點
     const hasData = chart.data.datasets.some(
       (ds) => ds.data && ds.data.some((point) => point !== null)
     );
@@ -30,22 +29,22 @@ const mainChartNoDataPlugin = {
 
 const ChartManager = (sandbox) => {
   // --- 模組私有屬性 ---
-  let temperatureChartInstance = null; // 主圖表（技術溫測實溫）的實例
-  let rawTemperatureChartInstance = null; // 原始數據圖表的實例
-  let airVolumeCompareChartInstance = null; // 風量比較圖的實例
-  let tempCompareChartInstance = null; // 溫度比較圖的實例
-  let datasetVisibility = {}; // 記住主圖表各數據線的顯示/隱藏狀態
-  let rawDatasetVisibility = {}; // 記住原始數據圖表各數據線的顯示/隱藏狀態
+  let temperatureChartInstance = null;
+  let rawTemperatureChartInstance = null;
+  let airVolumeCompareChartInstance = null;
+  let tempCompareChartInstance = null;
+  let datasetVisibility = {};
+  let rawDatasetVisibility = {};
 
   const _getTimestamp = () => {
     const now = new Date();
-    const YYYY = now.getFullYear();
+    constigliano = now.getFullYear();
     const MM = String(now.getMonth() + 1).padStart(2, "0");
     const DD = String(now.getDate()).padStart(2, "0");
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
-    return `${YYYY}${MM}${DD}_${hh}${mm}${ss}`;
+    return `${yyyy}${MM}${DD}_${hh}${mm}${ss}`;
   };
 
   const _updateAirVolumeComparisonChart = (analysisData) => {
@@ -251,7 +250,6 @@ const ChartManager = (sandbox) => {
       });
     }
 
-    // ▼▼▼【★★★ 重新加入的程式碼區塊 ★★★】▼▼▼
     const machineDisplayLabel = "機台顯示溫度";
     const machineDisplayData = chartLabels.map((label) => {
       if (recordToChart) {
@@ -288,7 +286,6 @@ const ChartManager = (sandbox) => {
       order: 1,
       hidden: isMachineHidden,
     });
-    // ▲▲▲【★★★ 重新加入結束 ★★★】▲▲▲
 
     let yMin = 0,
       yMax = 10;
@@ -369,26 +366,114 @@ const ChartManager = (sandbox) => {
   };
 
   const _plotRawData = (results) => {
+    console.log("ChartManager: _plotRawData 收到數據:", results);
+
     sandbox.publish("clear-raw-chart-error");
 
+    // --- 關鍵修正：確保在獲取 Canvas 之前，元素確實存在於 DOM 中 ---
+    let canvasElement = document.getElementById("rawTemperatureChart");
+    let ctx = null;
+
+    if (!canvasElement) {
+        console.error("ChartManager: 警告！rawTemperatureChart 元素不存在於 DOM 中。等待它出現。");
+        // 如果元素不存在，設定一個延遲重試機制
+        // 這裡可以使用一個更精細的策略，例如 MutationObserver 或更長的延遲
+        setTimeout(() => {
+            canvasElement = document.getElementById("rawTemperatureChart");
+            if (canvasElement) {
+                ctx = canvasElement.getContext("2d");
+                if (ctx) {
+                    console.log("ChartManager: 延遲後成功獲取到 rawTemperatureChart Canvas.");
+                    // 新增偵錯日誌，顯示 Canvas 及其容器尺寸
+                    const container = canvasElement.parentElement;
+                    console.log("ChartManager: 延遲後 Canvas 元素尺寸:", canvasElement.width, "x", canvasElement.height);
+                    console.log("ChartManager: 延遲後容器 (.raw-data-chart-section) 尺寸:", container?.offsetWidth, "x", container?.offsetHeight);
+                    _drawRawChart(results, ctx, canvasElement); // 傳遞 canvasElement
+                } else {
+                    console.error("ChartManager: 延遲後無法獲取 rawTemperatureChart 的 2D 上下文。");
+                    sandbox.publish("show-raw-chart-error", "無法找到圖表繪製區域。");
+                    sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
+                }
+            } else {
+                console.error("ChartManager: 延遲後 rawTemperatureChart 元素仍然不存在。放棄繪製。");
+                sandbox.publish("show-raw-chart-error", "無法找到圖表繪製區域。");
+                sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
+            }
+        }, 100); // 延遲 100 毫秒後重試
+
+        sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
+        sandbox.publish("show-message", { text: "正在嘗試載入圖表，請稍候...", type: "info" });
+        return; // 立即返回，因為我們正在重試
+    } else {
+        // 如果元素一開始就存在，直接獲取上下文
+        ctx = canvasElement.getContext("2d");
+        if (!ctx) {
+            console.error("ChartManager: 無法獲取 rawTemperatureChart 的 2D 上下文。圖表可能不存在或已損壞。");
+            sandbox.publish("show-raw-chart-error", "無法找到圖表繪製區域。");
+            sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
+            return;
+        }
+        // 新增偵錯日誌，顯示 Canvas 及其容器尺寸 (如果第一次就獲取到)
+        const container = canvasElement.parentElement;
+        console.log("ChartManager: 初始 Canvas 元素尺寸:", canvasElement.width, "x", canvasElement.height);
+        console.log("ChartManager: 初始容器 (.raw-data-chart-section) 尺寸:", container?.offsetWidth, "x", container?.offsetHeight);
+    }
+
+    // 將核心繪製邏輯移到一個單獨的函式中
+    _drawRawChart(results, ctx, canvasElement); // 傳遞 canvasElement
+  };
+
+  // 將原始數據的繪製邏輯封裝在一個獨立的函式中
+  const _drawRawChart = (results, ctx, canvasElement) => { // 接收 canvasElement
+    // 檢查 ctx 是否有效，再次防止在極端情況下出錯
+    if (!ctx || !canvasElement) { // 同時檢查 canvasElement
+        console.error("ChartManager: _drawRawChart 接收到無效的上下文或 Canvas 元素。無法繪製。");
+        sandbox.publish("show-raw-chart-error", "圖表繪製上下文無效。");
+        sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
+        return;
+    }
+
+    // --- 新增：根據容器尺寸設定 Canvas 元素的繪圖表面尺寸 ---
+    const container = canvasElement.parentElement;
+    if (container) {
+        // 設定 Canvas 的繪圖表面尺寸為容器的實際渲染尺寸
+        canvasElement.width = container.offsetWidth;
+        canvasElement.height = container.offsetHeight;
+        console.log("ChartManager: 動態設定 Canvas 繪圖尺寸為:", canvasElement.width, "x", canvasElement.height);
+    } else {
+        // 如果沒有父容器，則使用預設或 fallback 尺寸
+        console.warn("ChartManager: 無法找到 rawTemperatureChart 的父容器，將使用 Canvas 預設尺寸。");
+        // 可以考慮設定一個固定的 fallback 尺寸
+        canvasElement.width = 792; // 預設的寬度
+        canvasElement.height = 450; // 預設的高度
+    }
+    // -------------------------------------------------------------
+
+
     if (!results || !results.data || results.data.length === 0) {
-      if (rawTemperatureChartInstance) {
-        rawTemperatureChartInstance.destroy();
-        rawTemperatureChartInstance = null;
-      }
-      sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
-      return;
+        if (rawTemperatureChartInstance) {
+            rawTemperatureChartInstance.destroy();
+            rawTemperatureChartInstance = null;
+        }
+        sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
+        sandbox.publish("show-message", { text: "原始數據無效或為空，無法繪製圖表。", type: "info" });
+        return;
     }
 
     if (results.errors && results.errors.length > 0) {
-      const errorMessagesText = results.errors
-        .map((err) => `(第 ${err.row + 1} 行) ${err.message}`)
-        .join("; ");
-      sandbox.publish(
-        "show-raw-chart-error",
-        "CSV 解析錯誤: " + errorMessagesText
-      );
-      return;
+        const errorMessagesText = results.errors
+            .map((err) => `(第 ${err.row + 1} 行) ${err.message}`)
+            .join("; ");
+        sandbox.publish(
+            "show-raw-chart-error",
+            "CSV 解析錯誤: " + errorMessagesText
+        );
+        if (rawTemperatureChartInstance) {
+            rawTemperatureChartInstance.destroy();
+            rawTemperatureChartInstance = null;
+        }
+        sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
+        return;
     }
 
     const dataRows = results.data;
@@ -405,21 +490,25 @@ const ChartManager = (sandbox) => {
     const datasets = [];
     let foundChannelsCount = 0;
     const defaultColors = [
-      "rgba(255, 159, 64, 1)",
-      "rgba(54, 162, 235, 1)",
-      "rgba(255, 206, 86, 1)",
-      "rgba(75, 192, 192, 1)",
-      "rgba(153, 102, 255, 1)",
-      "rgba(255, 99, 132, 1)",
+      "rgba(255, 159, 64, 1)", // Orange
+      "rgba(54, 162, 235, 1)", // Blue
+      "rgba(255, 206, 86, 1)", // Yellow
+      "rgba(75, 192, 192, 1)", // Green
+      "rgba(153, 102, 255, 1)", // Purple
+      "rgba(255, 99, 132, 1)", // Red
     ];
+
     channelColumnsToPlot.forEach((columnKey, index) => {
       if (headersFromPapaParse.includes(columnKey)) {
         foundChannelsCount++;
-        const channelData = dataRows.map((row) =>
-          typeof row[columnKey] === "number" && !isNaN(row[columnKey])
-            ? row[columnKey]
-            : null
-        );
+        // 確保數據是數字類型，如果不是則轉換或設定為 null
+        const channelData = dataRows.map((row) => {
+          const value = row[columnKey];
+          // 嘗試將值轉換為數字，如果失敗則設為 null
+          const numValue = parseFloat(value);
+          return isNaN(numValue) ? null : numValue;
+        });
+
         const isHidden =
           rawDatasetVisibility[columnKey] !== undefined
             ? !rawDatasetVisibility[columnKey]
@@ -437,17 +526,30 @@ const ChartManager = (sandbox) => {
         });
       }
     });
+
     if (foundChannelsCount === 0) {
       sandbox.publish(
         "show-raw-chart-error",
-        `CSV 表頭必須包含至少一個以下欄位: ${channelColumnsToPlot.join(", ")}`
+        `CSV 表頭中必須包含至少一個以下欄位: ${channelColumnsToPlot.join(", ")}`
       );
+      if (rawTemperatureChartInstance) {
+          rawTemperatureChartInstance.destroy();
+          rawTemperatureChartInstance = null;
+      }
+      sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
       return;
     }
+
     const elapsedSeconds = dataRows.map((_, index) => index * 10);
     const maxActualElapsedSeconds =
       elapsedSeconds.length > 0 ? elapsedSeconds[elapsedSeconds.length - 1] : 0;
-    let xAxisMax = Math.ceil(maxActualElapsedSeconds / 100.0) * 100 || 100;
+    let xAxisMax = Math.ceil(maxActualElapsedSeconds / 100.0) * 100;
+    if (xAxisMax < 100 && elapsedSeconds.length > 0) {
+        xAxisMax = 100;
+    } else if (elapsedSeconds.length === 0) {
+        xAxisMax = 0;
+    }
+    
     const chartData = { labels: elapsedSeconds, datasets: datasets };
     const chartOptions = {
       responsive: true,
@@ -462,16 +564,21 @@ const ChartManager = (sandbox) => {
             stepSize: 100,
             callback: (value) =>
               value % 100 === 0 ? (value / 60).toFixed(1) : null,
+            autoSkip: false,
+            maxRotation: 45,
+            minRotation: 30,
           },
         },
         y: {
           title: { display: true, text: "溫度 (°C)", font: { size: 14 } },
           grace: "5%",
+          beginAtZero: false,
         },
       },
       plugins: {
         legend: {
           position: "top",
+          labels: { font: { size: 12 } },
           onClick: (e, legendItem, legend) => {
             const index = legendItem.datasetIndex;
             const ci = legend.chart;
@@ -485,24 +592,61 @@ const ChartManager = (sandbox) => {
           display: true,
           text: "原始溫度數據圖 (CSV 匯入)",
           font: { size: 18 },
+          padding: { top: 10, bottom: 20 },
         },
-        tooltip: { mode: "index", intersect: false },
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          callbacks: {
+              title: function(tooltipItems) {
+                  if (tooltipItems.length > 0) {
+                      const seconds = tooltipItems[0].parsed.x;
+                      return `時間: ${(seconds / 60).toFixed(1)} 分鐘`;
+                  }
+                  return '';
+              },
+              label: function(tooltipItem) {
+                  let label = tooltipItem.dataset.label || '';
+                  if (label) { label += ': '; }
+                  if (tooltipItem.parsed.y !== null) {
+                      label += tooltipItem.parsed.y.toFixed(2) + ' °C';
+                  }
+                  return label;
+              }
+          }
+        },
       },
       animation: {
         onComplete: () => _addKeyboardNavigationToLegend("rawTemperatureChart"),
       },
     };
-    const ctx = document.getElementById("rawTemperatureChart").getContext("2d");
+
     if (rawTemperatureChartInstance) {
       rawTemperatureChartInstance.destroy();
     }
-    rawTemperatureChartInstance = new Chart(ctx, {
-      type: "line",
-      data: chartData,
-      options: chartOptions,
-    });
-    sandbox.publish("toggle-raw-chart-export-button", { disabled: false });
+    try {
+        rawTemperatureChartInstance = new Chart(ctx, {
+            type: "line",
+            data: chartData,
+            options: chartOptions,
+        });
+        // 成功繪製後啟用匯出按鈕
+        sandbox.publish("toggle-raw-chart-export-button", { disabled: false });
+        sandbox.publish("show-message", { text: "原始數據圖表已成功繪製。", type: "success" });
+    } catch (chartError) {
+        console.error("ChartManager: 繪製原始數據圖表時發生錯誤:", chartError);
+        sandbox.publish("show-raw-chart-error", "繪製圖表時發生錯誤: " + chartError.message);
+        sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
+        // 確保即使繪製失敗，舊圖表也會被銷毀
+        if (rawTemperatureChartInstance) {
+            rawTemperatureChartInstance.destroy();
+            rawTemperatureChartInstance = null;
+        }
+    }
+    
+    sandbox.publish("raw-csv-data-parsed", results);
   };
+
 
   const _exportMainChart = () => {
     if (!temperatureChartInstance) {
@@ -601,7 +745,7 @@ const ChartManager = (sandbox) => {
       getComputedStyle(document.documentElement)
         .getPropertyValue("--bg-container")
         .trim() || "#FFFFFF";
-    ctx.fillRect(0, 0, chartCanvas.width, chartCanvas.height);
+    ctx.fillRect(0, 0, chartCanvas.width, canvas.height);
     const image = chartCanvas.toDataURL("image/png", 1.0);
     ctx.restore();
 
@@ -615,6 +759,7 @@ const ChartManager = (sandbox) => {
     init: () => {
       console.log("ChartManager: 模組初始化完成");
 
+      sandbox.subscribe("raw-data-parsed-for-charting", (data) => _plotRawData(data));
       sandbox.subscribe("data-updated", (data) => {
         _updateMainChart(data ? data.records : []);
         const comparisonData = data ? data.comparisonAnalysis : null;
@@ -628,8 +773,7 @@ const ChartManager = (sandbox) => {
         _updateMainChart(null);
         _plotRawData(null);
       });
-      sandbox.subscribe("raw-csv-data-parsed", _plotRawData);
-      sandbox.subscribe("plot-raw-data-chart", _plotRawData);
+      sandbox.subscribe("plot-raw-data-chart", (data) => _plotRawData(data));
       sandbox.subscribe("request-export-main-chart", _exportMainChart);
       sandbox.subscribe("request-export-raw-chart", _exportRawChart);
       sandbox.subscribe("request-chart-preview", (recordDataFromEvent) => {
@@ -641,7 +785,7 @@ const ChartManager = (sandbox) => {
       );
       sandbox.subscribe(
         "request-export-temp-compare-chart",
-        _exportTempCompareChart
+        (data) => _exportTempCompareChart(data) // 修正這裡的綁定
       );
 
       _updateMainChart([]);

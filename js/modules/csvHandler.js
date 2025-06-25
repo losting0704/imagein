@@ -1,4 +1,4 @@
-// /js/modules/csvHandler.js
+// /js/modules/csvHandler.js (修正後的版本)
 
 import { generateFieldConfigurations } from "./config.js";
 import * as utils from "./utils.js";
@@ -26,11 +26,6 @@ const CsvHandler = (sandbox) => {
     URL.revokeObjectURL(url);
   };
 
-  /**
-   * 解析 CSV 資料列，智慧相容新舊兩種標頭格式，並正確轉換狀態
-   * @param {Array} rows - 從 PapaParse 解析出來的資料列
-   * @returns {Array} 轉換後的標準紀錄物件陣列
-   */
   const _parseCsvRowsToRecords = (rows) => {
     const importedRecords = [];
     for (const row of rows) {
@@ -76,8 +71,6 @@ const CsvHandler = (sandbox) => {
         const trimmedHeader = headerFromFile.trim();
         let value = row[headerFromFile];
 
-        // ▼▼▼ 新增開始 ▼▼▼
-        // 特別處理 RTO 和 升溫 狀態
         if (trimmedHeader === "RTO啟用狀態") {
           recordData.rtoStatus =
             value === "有" ? "yes" : value === "無" ? "no" : null;
@@ -89,7 +82,6 @@ const CsvHandler = (sandbox) => {
             value === "有" ? "yes" : value === "無" ? "no" : null;
           continue;
         }
-        // ▲▲▲ 新增結束 ▲▲▲
 
         let config = allConfigsForModel.find(
           (c) => c.csvHeader === trimmedHeader
@@ -161,6 +153,28 @@ const CsvHandler = (sandbox) => {
         sandbox.publish("hide-loader");
         sandbox.publish("show-message", {
           text: `讀取檔案 ${file.name} 失敗: ${err.message}`,
+          type: "error",
+        });
+      },
+    });
+  };
+
+  // 這是之前未被呼叫的函式
+  const _handleRawCsvImport = ({ file }) => {
+    if (!file) return;
+    sandbox.publish("show-loader");
+    Papa.parse(file, {
+      header: true,
+      dynamicTyping: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        sandbox.publish("hide-loader");
+        sandbox.publish("raw-data-parsed-for-charting", results);
+      },
+      error: (err) => {
+        sandbox.publish("hide-loader");
+        sandbox.publish("show-message", {
+          text: `讀取或解析 Raw Data CSV 失敗: ${err.message}`,
           type: "error",
         });
       },
@@ -528,12 +542,10 @@ const CsvHandler = (sandbox) => {
             const rtoValue = utils.getNestedValue(record, "rtoStatus");
             valueToPush =
               rtoValue === "yes" ? "有" : rtoValue === "no" ? "無" : "";
-            // ▼▼▼ 新增開始 ▼▼▼
           } else if (fieldConfig.dataKey === "heatingStatus") {
             const heatingValue = utils.getNestedValue(record, "heatingStatus");
             valueToPush =
               heatingValue === "yes" ? "有" : heatingValue === "no" ? "無" : "";
-            // ▲▲▲ 新增結束 ▲▲▲
           } else {
             valueToPush = utils.getNestedValue(record, fieldConfig.dataKey, "");
           }
@@ -572,8 +584,12 @@ const CsvHandler = (sandbox) => {
         console.error("CsvHandler: 缺少 uiManager 模組！");
         return;
       }
-
       console.log("CsvHandler: 模組初始化完成");
+
+      // **** 修正這裡：使用箭頭函式包裝，確保 `this` 上下文正確或直接訪問到 `_handleRawCsvImport`
+      sandbox.subscribe("request-import-raw-csv", (data) =>
+        _handleRawCsvImport(data)
+      );
 
       sandbox.subscribe("request-load-master-db-start", _startLoadMasterDbFlow);
       sandbox.subscribe(
