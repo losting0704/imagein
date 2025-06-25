@@ -1,4 +1,4 @@
-// /js/modules/uiManager.js
+// /js/modules/uiManager.js (修正後)
 
 import {
   generateFieldConfigurations,
@@ -19,9 +19,6 @@ const UIManager = (sandbox) => {
     tempRawData: null,
     _editingRecordId: null,
 
-    /**
-     * 快取所有需要操作的 DOM 元素。
-     */
     _cacheDom() {
       const D = (id) => document.getElementById(id);
       self.dom = {
@@ -51,7 +48,7 @@ const UIManager = (sandbox) => {
         csvFileInput: D("csvFileInput"),
         exportCsvBtn: D("exportCsvBtn"),
         exportChartBtn: D("exportChartBtn"),
-        rawCsvFileInput: D("rawCsvFileInput"), // 這個 ID 應該是正確的
+        rawCsvFileInput: D("rawCsvFileInput"),
         exportRawChartButton: D("exportRawChartButton"),
         allInputFieldsContainer: document.querySelector(".container"),
         emptyStateMessage: D("emptyStateMessage"),
@@ -78,9 +75,9 @@ const UIManager = (sandbox) => {
         mergeToMasterBtn: D("mergeToMasterBtn"),
         exportForPowerBIBtn: D("exportForPowerBIBtn"),
         exportDailyJsonBtn: D("exportDailyJsonBtn"),
-        historyCsvInput: D("historyCsvInputForMasterCreation"), // 更新此處
-        masterJsonInput: D("masterJsonInputForLoad"), // 更新此處
-        dailyJsonInput: D("dailyJsonInputForMerge"), // 更新此處
+        historyCsvInput: D("historyCsvInputForMasterCreation"),
+        masterJsonInput: D("masterJsonInputForLoad"),
+        dailyJsonInput: D("dailyJsonInputForMerge"),
       };
     },
 
@@ -118,11 +115,8 @@ const UIManager = (sandbox) => {
           const floorHeader = document.createElement("h3");
           floorHeader.className = "section-header";
           floorHeader.textContent = floor;
-          floorHeader.style.marginTop = "20px";
-          floorHeader.style.fontSize = "1.1em";
-          floorHeader.style.textAlign = "left";
-          floorHeader.style.justifyContent = "flex-start";
-          floorHeader.style.gridColumn = "1 / -1";
+          floorHeader.style.cssText =
+            "margin-top: 20px; font-size: 1.1em; text-align: left; justify-content: flex-start; grid-column: 1 / -1;";
           gridContainer.appendChild(floorHeader);
 
           groupedByFloor[floor].forEach((measure) => {
@@ -187,8 +181,7 @@ const UIManager = (sandbox) => {
       if (!self.dom.paginationContainer) return;
       self.dom.paginationContainer.innerHTML = "";
       if (totalPages <= 1) return;
-      let paginationHtml = "";
-      paginationHtml += `<button class="pagination-button" data-page="${
+      let paginationHtml = `<button class="pagination-button" data-page="${
         currentPage - 1
       }" ${currentPage === 1 ? "disabled" : ""}>&laquo; 上一頁</button>`;
       const pageRange = 2;
@@ -196,9 +189,8 @@ const UIManager = (sandbox) => {
       let endPage = Math.min(totalPages, currentPage + pageRange);
       if (currentPage - pageRange > 1) {
         paginationHtml += `<button class="pagination-button" data-page="1">1</button>`;
-        if (currentPage - pageRange > 2) {
+        if (currentPage - pageRange > 2)
           paginationHtml += `<span class="pagination-ellipsis">...</span>`;
-        }
       }
       for (let i = startPage; i <= endPage; i++) {
         paginationHtml += `<button class="pagination-button ${
@@ -206,9 +198,8 @@ const UIManager = (sandbox) => {
         }" data-page="${i}">${i}</button>`;
       }
       if (currentPage + pageRange < totalPages) {
-        if (currentPage + pageRange < totalPages - 1) {
+        if (currentPage + pageRange < totalPages - 1)
           paginationHtml += `<span class="pagination-ellipsis">...</span>`;
-        }
         paginationHtml += `<button class="pagination-button" data-page="${totalPages}">${totalPages}</button>`;
       }
       paginationHtml += `<button class="pagination-button" data-page="${
@@ -237,6 +228,7 @@ const UIManager = (sandbox) => {
         const stickyColumnWidths = [50, 70, 90, 100, 180];
         let headerHtml = `<th class="sticky-col" style="left: 0; min-width: ${stickyColumnWidths[0]}px;">比較</th>`;
         let stickyOffset = stickyColumnWidths[0];
+
         tableHeaderConfigs.forEach((f, index) => {
           const isSortable = f.dataKey && f.id !== "recordTypeDisplay";
           const sortKey = isSortable ? `data-sort-key="${f.dataKey}"` : "";
@@ -255,6 +247,7 @@ const UIManager = (sandbox) => {
             headerHtml += `<th class="${sortClass}" ${sortKey}>${thContent}</th>`;
           }
         });
+
         self.dom.dynamicTableHeadersRow.innerHTML =
           headerHtml + "<th>操作</th>";
         self.dom.dataTableBody.innerHTML = "";
@@ -262,6 +255,7 @@ const UIManager = (sandbox) => {
         self.dom.emptyStateMessage.style.display = hasRecords
           ? "none"
           : "block";
+
         if (hasRecords) {
           records.forEach((record, index) => {
             const row = self.dom.dataTableBody.insertRow();
@@ -279,6 +273,7 @@ const UIManager = (sandbox) => {
             compareCell.innerHTML = `<input type="checkbox" class="compare-checkbox" data-record-id="${recordId}" ${
               self.selectedToCompareIds.includes(recordId) ? "checked" : ""
             }>`;
+
             let cellOffset = stickyColumnWidths[0];
             tableHeaderConfigs.forEach((fieldConfig, colIndex) => {
               const td = row.insertCell();
@@ -293,33 +288,32 @@ const UIManager = (sandbox) => {
                 fieldConfig.dataKey,
                 ""
               );
-              if (fieldConfig.dataKey === "recordType") {
+              if (fieldConfig.dataKey === "recordType")
                 valueToDisplay =
                   record.recordType === "evaluationTeam"
                     ? "評價TEAM用"
                     : "條件設定用";
-              } else if (fieldConfig.dataKey === "rtoStatus") {
-                const rtoValue = utils.getNestedValue(record, "rtoStatus");
+              else if (fieldConfig.dataKey === "rtoStatus")
                 valueToDisplay =
-                  rtoValue === "yes" ? "有" : rtoValue === "no" ? "無" : "";
-              } else if (fieldConfig.dataKey === "heatingStatus") {
-                const heatingValue = utils.getNestedValue(
-                  record,
-                  "heatingStatus"
-                );
-                valueToDisplay =
-                  heatingValue === "yes"
+                  record.rtoStatus === "yes"
                     ? "有"
-                    : heatingValue === "no"
+                    : record.rtoStatus === "no"
                     ? "無"
                     : "";
-              } else if (fieldConfig.dataKey === "dryerModel") {
+              else if (fieldConfig.dataKey === "heatingStatus")
+                valueToDisplay =
+                  record.heatingStatus === "yes"
+                    ? "有"
+                    : record.heatingStatus === "no"
+                    ? "無"
+                    : "";
+              else if (fieldConfig.dataKey === "dryerModel")
                 valueToDisplay = record.dryerModel
                   ? record.dryerModel.toUpperCase()
                   : "";
-              }
               td.textContent = valueToDisplay;
             });
+
             const actionsTd = row.insertCell();
             actionsTd.className = "actions";
             const hasRawData =
@@ -332,14 +326,80 @@ const UIManager = (sandbox) => {
             actionsTd.innerHTML = `<button class="button button-icon golden-batch-btn" title="設為黃金樣板" data-record-id="${recordId}">⭐</button> ${viewRawBtnHtml} <button class="button button-edit edit-btn" title="編輯" data-record-id="${recordId}"><span>編輯</span></button> <button class="button button-danger delete-btn" title="刪除" data-record-id="${recordId}"><span>刪除</span></button>`;
           });
         }
-        if (pagination) {
-          self._renderPagination(pagination);
-        }
+        if (pagination) self._renderPagination(pagination);
       } catch (error) {
         console.error("UIManager: _renderTable 渲染時發生嚴重錯誤:", error);
       }
     },
 
+    _loadDataToForm(record, isForEdit = false) {
+      self._clearForm();
+      if (isForEdit) {
+        self._editingRecordId = record.id;
+      }
+      if (record.recordType === "evaluationTeam")
+        self.dom.radioEvaluationTeam.checked = true;
+      else if (record.recordType === "conditionSetting")
+        self.dom.radioConditionSetting.checked = true;
+
+      if (record.dryerModel) {
+        self.dom.dryerModelSelect.value = record.dryerModel.toLowerCase();
+        self._currentDryerModel = record.dryerModel.toLowerCase();
+      }
+
+      self._renderAirAndExternalInputs(self._currentDryerModel);
+      self._renderAirVolumeGrid(self._currentDryerModel);
+      self._generateDamperOpeningInputs();
+      self._renderHmiSections(self._currentDryerModel);
+      self._fieldConfigurations = generateFieldConfigurations(
+        self._currentDryerModel
+      );
+      self._toggleSections();
+      self._populateFilterSelect();
+
+      const rtoStatusRadio = document.querySelector(
+        `input[name="rtoStatus"][value="${record.rtoStatus}"]`
+      );
+      if (rtoStatusRadio) rtoStatusRadio.checked = true;
+
+      const heatingStatusRadio = document.querySelector(
+        `input[name="heatingStatus"][value="${record.heatingStatus}"]`
+      );
+      if (heatingStatusRadio) heatingStatusRadio.checked = true;
+
+      self._fieldConfigurations.forEach((field) => {
+        if (
+          field.recordTypes.includes(record.recordType) &&
+          !field.isCalculated &&
+          field.elemType !== "radio"
+        ) {
+          const valueToSet = utils.getNestedValue(record, field.dataKey, null);
+          const el = document.getElementById(field.id);
+          if (el) el.value = valueToSet ?? "";
+        }
+      });
+
+      techTempPoints.forEach((p) => self._updateTechTempRow(p.id));
+      getAirVolumeMeasurementsByModel(self._currentDryerModel).forEach((m) =>
+        self._updateAirVolumeRow(m.id)
+      );
+
+      if (isForEdit) {
+        self.dom.updateDataBtn.style.display = "inline-flex";
+        self.dom.cancelEditBtn.style.display = "inline-flex";
+        self.dom.saveDataBtn.style.display = "none";
+      }
+
+      // (核心修正) 發布事件通知 UI 已準備好，可以繪製圖表
+      if (record.rawChartData) {
+        self.tempRawData = record.rawChartData;
+        sandbox.publish("uiReadyForRawChart", record.rawChartData);
+      }
+
+      sandbox.publish("request-chart-preview", record);
+    },
+
+    // 其他函式保持不變...
     _handleCompareSelection(recordId) {
       const index = self.selectedToCompareIds.indexOf(recordId);
       if (index > -1) {
@@ -648,109 +708,23 @@ const UIManager = (sandbox) => {
     },
 
     _clearForm() {
-      document
-        .querySelectorAll(
-          '#evaluationTeam_airAndExternal_grid input[type="number"], #evaluationTeam_airAndExternal_grid .error-message'
-        )
-        .forEach((el) => {
-          if (el.tagName === "INPUT") {
-            el.value = "";
-            el.classList.remove("invalid-input");
-          } else {
-            el.textContent = "";
-            el.classList.remove("show");
-          }
-        });
-      document
-        .querySelectorAll('input[type="number"], textarea')
-        .forEach((el) => {
-          if (
-            !el.disabled &&
-            !el.closest("#evaluationTeam_airAndExternal_grid")
-          ) {
-            el.value = "";
-          }
-        });
+      document.querySelectorAll("form").forEach((form) => form.reset());
       document.querySelectorAll(".error-message").forEach((el) => {
-        if (!el.closest("#evaluationTeam_airAndExternal_grid")) {
-          el.textContent = "";
-          el.classList.remove("show");
-        }
+        el.textContent = "";
+        el.classList.remove("show");
       });
       document
         .querySelectorAll(".invalid-input")
         .forEach((el) => el.classList.remove("invalid-input"));
       self._setDateTimeToNow();
-      const rtoNoRadio = document.getElementById("rtoNo");
-      if (rtoNoRadio) rtoNoRadio.checked = true;
-      const heatingNoRadio = document.getElementById("heatingNo");
-      if (heatingNoRadio) heatingNoRadio.checked = true;
+      document.getElementById("rtoNo").checked = true;
+      document.getElementById("heatingNo").checked = true;
       self.dom.updateDataBtn.style.display = "none";
       self.dom.cancelEditBtn.style.display = "none";
       self.dom.saveDataBtn.style.display = "inline-flex";
       self.tempRawData = null;
       self._editingRecordId = null;
       sandbox.publish("form-cleared");
-    },
-
-    _loadDataToForm(record, isForEdit = false) {
-      self._clearForm();
-      if (isForEdit) {
-        self._editingRecordId = record.id;
-      }
-      if (record.recordType === "evaluationTeam") {
-        self.dom.radioEvaluationTeam.checked = true;
-      } else if (record.recordType === "conditionSetting") {
-        self.dom.radioConditionSetting.checked = true;
-      }
-      if (record.dryerModel) {
-        self.dom.dryerModelSelect.value = record.dryerModel.toLowerCase();
-        self._currentDryerModel = record.dryerModel.toLowerCase();
-      }
-      self._renderAirAndExternalInputs(self._currentDryerModel);
-      self._renderAirVolumeGrid(self._currentDryerModel);
-      self._generateDamperOpeningInputs();
-      self._renderHmiSections(self._currentDryerModel);
-      self._fieldConfigurations = generateFieldConfigurations(
-        self._currentDryerModel
-      );
-      self._toggleSections();
-      self._populateFilterSelect();
-      const rtoStatusRadio = document.querySelector(
-        `input[name="rtoStatus"][value="${record.rtoStatus}"]`
-      );
-      if (rtoStatusRadio) rtoStatusRadio.checked = true;
-      const heatingStatusRadio = document.querySelector(
-        `input[name="heatingStatus"][value="${record.heatingStatus}"]`
-      );
-      if (heatingStatusRadio) heatingStatusRadio.checked = true;
-      self._fieldConfigurations.forEach((field) => {
-        if (
-          field.recordTypes.includes(record.recordType) &&
-          !field.isCalculated &&
-          field.elemType !== "radio"
-        ) {
-          const valueToSet = utils.getNestedValue(record, field.dataKey, null);
-          const el = document.getElementById(field.id);
-          if (el) {
-            el.value = valueToSet ?? "";
-          }
-        }
-      });
-      techTempPoints.forEach((p) => self._updateTechTempRow(p.id));
-      getAirVolumeMeasurementsByModel(self._currentDryerModel).forEach((m) =>
-        self._updateAirVolumeRow(m.id)
-      );
-      if (isForEdit) {
-        self.dom.updateDataBtn.style.display = "inline-flex";
-        self.dom.cancelEditBtn.style.display = "inline-flex";
-        self.dom.saveDataBtn.style.display = "none";
-      }
-      if (record.rawChartData) {
-        self.tempRawData = record.rawChartData;
-        sandbox.publish("plot-raw-data-chart", record.rawChartData);
-      }
-      sandbox.publish("request-chart-preview", record);
     },
 
     init() {
@@ -762,15 +736,12 @@ const UIManager = (sandbox) => {
         .join("");
       self.dom.dryerModelSelect.value = "vt8";
       self._currentDryerModel = "vt8";
-
-      // ★★★ 關鍵修正：設定初始的 Damper 佈局圖路徑 ★★★
       if (self.dom.viewDamperLayoutBtn) {
         const initialModel = self._currentDryerModel;
         const imagePath =
           damperLayoutsByModel[initialModel] || "./img/damper-layout.jpg";
         self.dom.viewDamperLayoutBtn.dataset.imageSrc = imagePath;
       }
-
       self._renderAirAndExternalInputs(self._currentDryerModel);
       self._renderAirVolumeGrid(self._currentDryerModel);
       self._generateTechTempInputs();
@@ -838,11 +809,10 @@ const UIManager = (sandbox) => {
         sandbox.publish("request-record-type-change");
       });
       sandbox.subscribe("request-view-switch", (data) => {
-        if (data.recordType === "evaluationTeam") {
+        if (data.recordType === "evaluationTeam")
           self.dom.radioEvaluationTeam.checked = true;
-        } else if (data.recordType === "conditionSetting") {
+        else if (data.recordType === "conditionSetting")
           self.dom.radioConditionSetting.checked = true;
-        }
         const newDryerModel = data.dryerModel.toLowerCase();
         self.dom.dryerModelSelect.value = newDryerModel;
         self._currentDryerModel = newDryerModel;
@@ -880,17 +850,17 @@ const UIManager = (sandbox) => {
     },
 
     getCurrentRecordType() {
-      const checkedRadio = document.querySelector(
-        'input[name="recordType"]:checked'
+      return (
+        document.querySelector('input[name="recordType"]:checked')?.value ||
+        "evaluationTeam"
       );
-      return checkedRadio ? checkedRadio.value : "evaluationTeam";
     },
 
     getCurrentDryerModel() {
-      if (self.dom.dryerModelSelect && self.dom.dryerModelSelect.value) {
-        return self.dom.dryerModelSelect.value.toLowerCase();
-      }
-      return self._currentDryerModel;
+      return (
+        self.dom.dryerModelSelect?.value.toLowerCase() ||
+        self._currentDryerModel
+      );
     },
 
     getRecordDataFromForm() {
@@ -919,37 +889,36 @@ const UIManager = (sandbox) => {
         ) {
           const el = document.getElementById(field.id);
           if (el) {
-            let value;
-            if (el.type === "number") {
-              value = el.value === "" ? null : parseFloat(el.value);
-            } else {
-              value = el.value;
-            }
+            let value =
+              el.type === "number"
+                ? el.value === ""
+                  ? null
+                  : parseFloat(el.value)
+                : el.value;
             utils.setNestedValue(recordData, field.dataKey, value);
           }
         }
       });
-      const airMeasurements = getAirVolumeMeasurementsByModel(
-        self._currentDryerModel
-      );
-      airMeasurements.forEach((measure) => {
-        if (measure.status === "normal") {
-          const speed = utils.getNestedValue(
-            recordData,
-            `airVolumes.${measure.id}.speed`
-          );
-          const temp = utils.getNestedValue(
-            recordData,
-            `airVolumes.${measure.id}.temp`
-          );
-          const volume = utils.calculateAirVolume(temp, speed, measure.area);
-          if (!recordData.airVolumes[measure.id])
-            recordData.airVolumes[measure.id] = {};
-          recordData.airVolumes[measure.id].volume = isNaN(volume)
-            ? null
-            : volume;
+      getAirVolumeMeasurementsByModel(self._currentDryerModel).forEach(
+        (measure) => {
+          if (measure.status === "normal") {
+            const speed = utils.getNestedValue(
+              recordData,
+              `airVolumes.${measure.id}.speed`
+            );
+            const temp = utils.getNestedValue(
+              recordData,
+              `airVolumes.${measure.id}.temp`
+            );
+            const volume = utils.calculateAirVolume(temp, speed, measure.area);
+            if (!recordData.airVolumes[measure.id])
+              recordData.airVolumes[measure.id] = {};
+            recordData.airVolumes[measure.id].volume = isNaN(volume)
+              ? null
+              : volume;
+          }
         }
-      });
+      );
       techTempPoints.forEach((point) => {
         const recordPointKey = utils.getActualTempRecordKey(point.id);
         const tempValues = [];
@@ -963,17 +932,14 @@ const UIManager = (sandbox) => {
         if (!recordData.actualTemps[recordPointKey])
           recordData.actualTemps[recordPointKey] = {};
         if (tempValues.length > 0) {
-          const diff = Math.max(...tempValues) - Math.min(...tempValues);
           recordData.actualTemps[recordPointKey].diff = parseFloat(
-            diff.toFixed(2)
+            (Math.max(...tempValues) - Math.min(...tempValues)).toFixed(2)
           );
         } else {
           recordData.actualTemps[recordPointKey].diff = null;
         }
       });
-      if (self.tempRawData) {
-        recordData.rawChartData = self.tempRawData;
-      }
+      if (self.tempRawData) recordData.rawChartData = self.tempRawData;
       return recordData;
     },
 
@@ -986,9 +952,7 @@ const UIManager = (sandbox) => {
       self._fieldConfigurations.forEach((field) => {
         if (field.recordTypes.includes(currentType)) {
           const el = document.getElementById(field.id);
-          if (el && !el.disabled) {
-            if (!self._validateInput(el)) isValid = false;
-          }
+          if (el && !el.disabled && !self._validateInput(el)) isValid = false;
         }
       });
       return isValid;

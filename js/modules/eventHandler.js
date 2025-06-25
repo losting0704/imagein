@@ -1,9 +1,10 @@
-// /js/modules/eventHandler.js
+// /js/modules/eventHandler.js (修正後)
 
 import * as utils from "./utils.js";
 
 const EventHandler = (sandbox) => {
   let ui;
+  let chartManager; // 新增 chartManager 的引用
   let debouncedValidate;
 
   const safeAddEventListener = (element, event, handler) => {
@@ -52,7 +53,7 @@ const EventHandler = (sandbox) => {
       sandbox.publish("request-export-daily-json");
     });
 
-    // --- 原有功能的事件綁定 ---
+    // --- 主要按鈕功能事件綁定 ---
     safeAddEventListener(dom.saveDataBtn, "click", () => {
       if (ui.validateForm()) {
         sandbox.publish("request-save-data", ui.getRecordDataFromForm());
@@ -84,13 +85,9 @@ const EventHandler = (sandbox) => {
     safeAddEventListener(dom.exportCsvBtn, "click", () =>
       sandbox.publish("request-current-data-for-export")
     );
-
     safeAddEventListener(dom.importCsvBtn, "click", () => {
-      if (dom.csvFileInput) {
-        dom.csvFileInput.click();
-      }
+      if (dom.csvFileInput) dom.csvFileInput.click();
     });
-
     safeAddEventListener(dom.csvFileInput, "change", (e) => {
       if (e.target.files.length > 0) {
         sandbox.publish("request-import-csv-records", {
@@ -99,29 +96,62 @@ const EventHandler = (sandbox) => {
         e.target.value = "";
       }
     });
-
-    safeAddEventListener(dom.exportChartBtn, "click", () =>
-      sandbox.publish("request-export-main-chart")
-    );
-    safeAddEventListener(dom.exportRawChartButton, "click", () =>
-      sandbox.publish("request-export-raw-chart")
-    );
-    safeAddEventListener(
-      document.getElementById("exportAirVolumeChartBtn"),
-      "click",
-      () => sandbox.publish("request-export-air-volume-chart")
-    );
-    safeAddEventListener(
-      document.getElementById("exportTempCompareChartBtn"),
-      "click",
-      () => sandbox.publish("request-export-temp-compare-chart")
-    );
     safeAddEventListener(dom.rawCsvFileInput, "change", (e) => {
       if (e.target.files[0]) {
         sandbox.publish("request-import-raw-csv", { file: e.target.files[0] });
         e.target.value = "";
       }
     });
+
+    // --- 圖表匯出按鈕事件 (核心修正) ---
+    safeAddEventListener(dom.exportChartBtn, "click", () =>
+      chartManager.exportChart(
+        "temperatureChart",
+        "技術溫測實溫分佈圖",
+        "技術溫測實溫分佈圖"
+      )
+    );
+    safeAddEventListener(dom.exportRawChartButton, "click", () => {
+      if (dom.exportRawChartButton.disabled) return;
+      chartManager.exportChart(
+        "rawTemperatureChart",
+        "原始溫測數據圖",
+        "原始溫測數據圖 (CSV 匯入)"
+      );
+    });
+    safeAddEventListener(
+      document.getElementById("exportAirVolumeChartBtn"),
+      "click",
+      () =>
+        chartManager.exportChart(
+          "dashboardRtoChart",
+          "風量比較圖",
+          "風量比較圖"
+        )
+    );
+    safeAddEventListener(
+      document.getElementById("exportTempCompareChartBtn"),
+      "click",
+      () =>
+        chartManager.exportChart(
+          "dashboardTempChart",
+          "溫度比較圖",
+          "溫度比較圖"
+        )
+    );
+
+    // --- (新增) Damper 佈局圖按鈕事件 ---
+    safeAddEventListener(dom.viewDamperLayoutBtn, "click", (e) => {
+      const button = e.currentTarget;
+      if (button && button.dataset.imageSrc) {
+        sandbox.publish("show-image-modal", {
+          src: button.dataset.imageSrc,
+          caption: button.dataset.imageCaption || "Damper 佈局圖",
+        });
+      }
+    });
+
+    // --- UI 互動事件 ---
     if (dom.radioButtons) {
       dom.radioButtons.forEach((radio) => {
         safeAddEventListener(radio, "change", (e) =>
@@ -140,29 +170,21 @@ const EventHandler = (sandbox) => {
       dom.imageModalOverlay.classList.remove("visible")
     );
 
-    // --- 整頁的點擊事件代理 ---
+    // --- 整頁的點擊事件代理 (Event Delegation) ---
     safeAddEventListener(document.body, "click", (e) => {
       const button = e.target.closest("button");
-
-      // 處理所有 icon-btn (放大鏡) 的點擊
       if (
         button &&
         button.classList.contains("icon-btn") &&
         button.dataset.imageSrc
       ) {
-        // ★★★ 這就是唯一的修正點 ★★★
-        // 阻止事件繼續向上冒泡到父層的 accordion-toggle 標題，
-        // 避免在點擊圖示時，意外觸發手風琴的展開或收合。
         e.stopPropagation();
-
         sandbox.publish("show-image-modal", {
           src: button.dataset.imageSrc,
           caption: button.dataset.imageCaption || "實景圖",
         });
-        return; // 處理完畢，可以提前結束
+        return;
       }
-
-      // 處理分頁按鈕的點擊
       if (
         button &&
         button.classList.contains("pagination-button") &&
@@ -170,10 +192,8 @@ const EventHandler = (sandbox) => {
       ) {
         const page = parseInt(button.dataset.page, 10);
         if (!isNaN(page)) sandbox.publish("request-change-page", page);
-        return; // 處理完畢，提前結束
+        return;
       }
-
-      // 處理歷史數據表格內的按鈕點擊
       const tableRow = e.target.closest("tr");
       if (
         tableRow &&
@@ -205,18 +225,14 @@ const EventHandler = (sandbox) => {
               .getElementById("rawTemperatureChartContainer")
               ?.scrollIntoView({ behavior: "smooth", block: "center" });
           }
-          return; // 處理完畢，提前結束
+          return;
         }
       }
-
-      // 處理表格排序
       const tableHeader = e.target.closest("th[data-sort-key]");
       if (tableHeader) {
         sandbox.publish("request-sort-history", tableHeader.dataset.sortKey);
         return;
       }
-
-      // 最後才處理 accordion 的點擊
       const header = e.target.closest(".accordion-toggle");
       if (header) {
         sandbox.publish("request-toggle-accordion", header);
@@ -256,8 +272,11 @@ const EventHandler = (sandbox) => {
   return {
     init: () => {
       ui = sandbox.getModule("uiManager");
-      if (!ui) {
-        console.error("EventHandler: 缺少 uiManager 模組！應用程式無法啟動。");
+      chartManager = sandbox.getModule("chartManager"); // 取得 chartManager 模組
+      if (!ui || !chartManager) {
+        console.error(
+          "EventHandler: 缺少 uiManager 或 chartManager 模組！應用程式無法啟動。"
+        );
         return;
       }
       console.log("EventHandler: 模組初始化完成");
