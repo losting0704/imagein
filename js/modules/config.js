@@ -89,7 +89,7 @@ const generateFieldConfigurations = (currentDryerModel = "vt8") => {
       recordTypes: ["evaluationTeam", "conditionSetting"],
       group: "basic",
       elemType: "textarea",
-      order: 4,
+      order: 2.2,
       inTable: true,
     },
   ];

@@ -580,7 +580,7 @@ const UIManager = (sandbox) => {
       const tableHeaderConfigs = fieldConfigurations.filter(
         (f) => f.inTable && f.recordTypes.includes(currentRecordType)
       );
-      const stickyColumnWidths = [50, 70, 90, 100, 180];
+      const stickyColumnWidths = [50, 70, 90, 100, 100];
       let headerHtml = `<th class="sticky-col" style="left: 0; min-width: ${stickyColumnWidths[0]}px;">比較</th>`;
       let stickyOffset = stickyColumnWidths[0];
 
