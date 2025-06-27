@@ -77,7 +77,7 @@ const generateFieldConfigurations = (currentDryerModel = "vt8") => {
       group: "basic",
       elemType: "datetime-local",
       required: true,
-      order: 3,
+      order: 2.1,
       inTable: true,
     },
     {
