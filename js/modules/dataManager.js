@@ -645,6 +645,11 @@ const DataManager = (sandbox) => {
           sandbox.publish("plot-raw-data-chart", {
             results: record.rawChartData,
           });
+          // ▼▼▼【新增】發布顯示文字的事件 ▼▼▼
+          sandbox.publish("display-historical-raw-text", {
+            rawChartData: record.rawChartData,
+          });
+
           sandbox.publish("show-message", {
             text: "原始數據圖已載入。",
             type: "info",

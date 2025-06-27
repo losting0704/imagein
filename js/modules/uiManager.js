@@ -700,6 +700,16 @@ const UIManager = (sandbox) => {
 
     editingRecordId = null;
     sandbox.publish("form-cleared");
+    // ▼▼▼ 在 clearForm 函式的最後，加入以下程式碼 ▼▼▼
+    if (dom.rawCsvTextArea) {
+      dom.rawCsvTextArea.readOnly = false; // 恢復為可編輯狀態
+      dom.rawCsvTextArea.style.backgroundColor = ""; // 移除背景色
+    }
+    tempRawData = null;
+    updateRawDataStatus(false);
+
+    editingRecordId = null;
+    sandbox.publish("form-cleared");
   };
 
   const loadDataToForm = (record, isForEdit = false) => {
@@ -986,7 +996,28 @@ const UIManager = (sandbox) => {
     console.log("Collected Record Data:", record);
     return record;
   };
+  // /js/modules/uiManager.js
 
+  // ... 在其他私有函式旁邊 ...
+
+  const displayHistoricalRawText = (rawChartData) => {
+    if (dom.rawCsvTextArea) {
+      if (rawChartData && rawChartData.data) {
+        try {
+          // 使用 Papa.unparse 將物件還原成 CSV 字串
+          const text = Papa.unparse(rawChartData.data, {
+            columns: rawChartData.meta?.fields, // 使用儲存的欄位順序
+          });
+          dom.rawCsvTextArea.value = text;
+          dom.rawCsvTextArea.readOnly = true; // 設為唯讀
+          dom.rawCsvTextArea.style.backgroundColor = "#f0f0f0"; // 給一個灰色背景提示
+        } catch (e) {
+          console.error("還原 Raw Data 文字時失敗:", e);
+          dom.rawCsvTextArea.value = "無法還原此筆紀錄的原始文字。";
+        }
+      }
+    }
+  };
   const subscribeToEvents = () => {
     sandbox.subscribe("raw-data-parsed-for-charting", (payload) => {
       const { results } = payload;
@@ -1081,6 +1112,11 @@ const UIManager = (sandbox) => {
       if (dom.loadingOverlay) dom.loadingOverlay.classList.remove("visible");
     });
     sandbox.subscribe("request-toggle-accordion", toggleAccordion);
+
+    // ▼▼▼【新增】訂閱顯示歷史 Raw Data 文字的事件 ▼▼▼
+    sandbox.subscribe("display-historical-raw-text", (payload) =>
+      displayHistoricalRawText(payload.rawChartData)
+    );
   };
 
   // ★★★ 核心修正：將 validateForm 移出 return 物件，成為私有函式 ★★★
