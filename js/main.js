@@ -39,10 +39,14 @@ document.addEventListener("DOMContentLoaded", () => {
   console.log("乾燥機數據紀錄器已嘗試啟動！");
   console.log("===================================");
 
-  // ▼▼▼ 在這裡加入 PWA 註冊程式碼 ▼▼▼
+  // ▼▼▼ PWA 註冊程式碼 ▼▼▼
   if ("serviceWorker" in navigator) {
+    // ★ 核心修正 ★：
+    // 使用 '/sw.js' (從網站根目錄出發的絕對路徑)。
+    // 這是最穩健可靠的方式，可以確保不論 main.js 在哪個資料夾內，
+    // 瀏覽器都能正確地從網站的根目錄找到 sw.js 檔案，從而解決 404 找不到檔案的錯誤。
     navigator.serviceWorker
-      .register("./sw.js")
+      .register("/sw.js", { type: "module" })
       .then((registration) => {
         console.log("Service Worker 註冊成功:", registration);
       })

@@ -1,9 +1,12 @@
-// /js/modules/chartManager.js (錯誤修正版)
+// /js/modules/chartManager.js (圖例恆定顯示版)
 
-import { techTempPoints } from "./config.js"; //
-import * as utils from "./utils.js"; //
+import { techTempPoints } from "./config.js";
+import * as utils from "./utils.js";
 
-// Chart.js 的客製化外掛，用於在主圖表無數據時顯示提示文字
+if (typeof ChartDataLabels !== 'undefined') {
+    Chart.register(ChartDataLabels);
+}
+
 const mainChartNoDataPlugin = {
   id: "mainChartNoData",
   afterDraw: (chart) => {
@@ -28,34 +31,24 @@ const mainChartNoDataPlugin = {
 };
 
 const ChartManager = (sandbox) => {
-  // --- 模組私有變數 ---
-  const chartInstances = {}; // 使用一個物件來儲存所有圖表實例
-  let datasetVisibility = {}; // 記住主圖表各數據線的顯示/隱藏狀態
-  let rawDatasetVisibility = {}; // 記住原始數據圖表各數據線的顯示/隱藏狀態
+  const chartInstances = {};
+  let datasetVisibility = {};
+  let rawDatasetVisibility = {};
+  let isDataLabelsVisible = false;
+  let isAirVolumeDataLabelsVisible = false;
 
-  /**
-   * 取得目前時間戳記，用於匯出檔名
-   * @returns {string} 格式為YYYYMMDD_HHMMSS 的字串
-   */
   const _getTimestamp = () => {
     const now = new Date();
-    // ▼▼▼【已修正】將 wwww 改為 yyyy，修正 ReferenceError ▼▼▼
-    const yyyy = now.getFullYear(); //
+    const inplaceYear = now.getFullYear();
     const MM = String(now.getMonth() + 1).padStart(2, "0");
     const DD = String(now.getDate()).padStart(2, "0");
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
-    return `${yyyy}${MM}${DD}_${hh}${mm}${ss}`; //
+    return `${inplaceYear}${MM}${DD}_${hh}${mm}${ss}`;
   };
 
-  /**
-   * 通用的圖表匯出函式，可匯出任何指定的圖表為 PNG 圖片
-   * @param {string} chartId - 圖表 <canvas> 元素的 ID
-   * @param {string} filename - 匯出的預設檔名 (不含副檔名)
-   * @param {string} [title] - (可選) 要加在圖片頂端的標題
-   */
-  const exportChart = (chartId, filename, title) => {
+  const exportChart = (chartId, filename, title, includeLegend = true) => {
     const chartInstance = chartInstances[chartId];
     if (!chartInstance) {
       sandbox.publish("show-message", {
@@ -64,41 +57,48 @@ const ChartManager = (sandbox) => {
       });
       return;
     }
-    const offScreenCanvas = document.createElement("canvas");
-    const originalCanvas = chartInstance.canvas;
-    const ctx = offScreenCanvas.getContext("2d");
-    const titleHeight = title ? 60 : 0;
-    const padding = 20;
-    offScreenCanvas.width = originalCanvas.width + padding * 2;
-    offScreenCanvas.height = originalCanvas.height + titleHeight + padding * 2;
-    ctx.fillStyle =
-      getComputedStyle(document.documentElement)
-        .getPropertyValue("--bg-container")
-        .trim() || "#FFFFFF";
-    ctx.fillRect(0, 0, offScreenCanvas.width, offScreenCanvas.height);
-    if (title) {
+
+    const originalLegendDisplay = chartInstance.options.plugins.legend.display;
+    try {
+      chartInstance.options.plugins.legend.display = includeLegend;
+      chartInstance.update();
+
+      const offScreenCanvas = document.createElement("canvas");
+      const originalCanvas = chartInstance.canvas;
+      const ctx = offScreenCanvas.getContext("2d");
+      const titleHeight = title ? 60 : 0;
+      const padding = 20;
+      offScreenCanvas.width = originalCanvas.width + padding * 2;
+      offScreenCanvas.height =
+        originalCanvas.height + titleHeight + padding * 2;
       ctx.fillStyle =
         getComputedStyle(document.documentElement)
-          .getPropertyValue("--text-primary")
-          .trim() || "#000000";
-      ctx.font = "bold 24px 'Noto Sans TC', sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(title, offScreenCanvas.width / 2, 40);
+          .getPropertyValue("--bg-container")
+          .trim() || "#FFFFFF";
+      ctx.fillRect(0, 0, offScreenCanvas.width, offScreenCanvas.height);
+      if (title) {
+        ctx.fillStyle =
+          getComputedStyle(document.documentElement)
+            .getPropertyValue("--text-primary")
+            .trim() || "#000000";
+        ctx.font = "bold 24px 'Noto Sans TC', sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(title, offScreenCanvas.width / 2, 40);
+      }
+      ctx.drawImage(originalCanvas, padding, titleHeight + padding);
+      const imageURL = offScreenCanvas.toDataURL("image/png", 1.0);
+      const link = document.createElement("a");
+      link.href = imageURL;
+      link.download = `${filename}_${_getTimestamp()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } finally {
+      chartInstance.options.plugins.legend.display = true;
+      chartInstance.update();
     }
-    ctx.drawImage(originalCanvas, padding, titleHeight + padding);
-    const imageURL = offScreenCanvas.toDataURL("image/png", 1.0);
-    const link = document.createElement("a");
-    link.href = imageURL;
-    link.download = `${filename}_${_getTimestamp()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
-  /**
-   * 更新（或建立）比較圖表 - 風量比較
-   * @param {object | null} analysisData - 包含圖表數據的物件，或 null 來隱藏圖表
-   */
   const _updateAirVolumeComparisonChart = (analysisData) => {
     const container = document.getElementById("dashboard-rto-chart-container");
     const ctx = document.getElementById("dashboardRtoChart")?.getContext("2d");
@@ -126,20 +126,17 @@ const ChartManager = (sandbox) => {
         plugins: {
           legend: {
             position: "top",
+            display: true 
           },
-          title: {
+          title: { 
             display: true,
             text: `風量比較 (${
               analysisData?.recordInfo?.recordA || "紀錄1"
             } vs ${analysisData?.recordInfo?.recordB || "紀錄2"})`,
-            font: {
-              size: 16,
-            },
-            color: getComputedStyle(document.documentElement)
-              .getPropertyValue("--text-primary")
-              .trim(),
+            font: { size: 16 },
+            color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
           },
-          tooltip: {
+          tooltip: { 
             callbacks: {
               label: function (context) {
                 let label = context.dataset.label || "";
@@ -156,20 +153,28 @@ const ChartManager = (sandbox) => {
               },
             },
           },
+          datalabels: {
+            display: isAirVolumeDataLabelsVisible,
+            anchor: 'end',
+            align: 'top',
+            formatter: (value) => {
+              return value.toFixed(1);
+            },
+            font: {
+              weight: 'bold',
+            },
+            color: '#444'
+          }
         },
-        scales: {
+        scales: { 
           x: {
             title: {
               display: true,
               text: "測量點",
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-primary")
-                .trim(),
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
             },
             ticks: {
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-secondary")
-                .trim(),
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim(),
             },
           },
           y: {
@@ -177,14 +182,10 @@ const ChartManager = (sandbox) => {
             title: {
               display: true,
               text: "風量 (Nm³/分)",
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-primary")
-                .trim(),
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
             },
             ticks: {
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-secondary")
-                .trim(),
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim(),
             },
           },
         },
@@ -192,10 +193,6 @@ const ChartManager = (sandbox) => {
     });
   };
 
-  /**
-   * 更新（或建立）比較圖表 - 溫度比較
-   * @param {object | null} analysisData - 包含圖表數據的物件，或 null 來隱藏圖表
-   */
   const _updateTempComparisonChart = (analysisData) => {
     const container = document.getElementById("dashboard-temp-chart-container");
     const ctx = document.getElementById("dashboardTempChart")?.getContext("2d");
@@ -215,11 +212,10 @@ const ChartManager = (sandbox) => {
     if (dashboardContainer) dashboardContainer.style.display = "block";
     if (container) container.style.display = "block";
 
-    let yMin = 0,
-      yMax = 100; // 預設範圍
+    let yMin = 0, yMax = 100;
     const allDataValues = tempData.datasets
       .flatMap((ds) => ds.data)
-      .filter((v) => v !== null && !isNaN(v));
+      .filter((v) => v !== null && isFinite(v));
     if (allDataValues.length > 0) {
       let dataMin = Math.min(...allDataValues);
       let dataMax = Math.max(...allDataValues);
@@ -238,18 +234,15 @@ const ChartManager = (sandbox) => {
         plugins: {
           legend: {
             position: "top",
+            display: true 
           },
           title: {
             display: true,
             text: `技術溫測實溫比較 (${
               analysisData?.recordInfo?.recordA || "紀錄1"
             } vs ${analysisData?.recordInfo?.recordB || "紀錄2"})`,
-            font: {
-              size: 16,
-            },
-            color: getComputedStyle(document.documentElement)
-              .getPropertyValue("--text-primary")
-              .trim(),
+            font: { size: 16 },
+            color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
           },
           tooltip: {
             callbacks: {
@@ -267,21 +260,17 @@ const ChartManager = (sandbox) => {
                 return label;
               },
             },
-          },
+          }
         },
-        scales: {
+        scales: { 
           x: {
             title: {
               display: true,
               text: "溫測點",
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-primary")
-                .trim(),
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
             },
             ticks: {
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-secondary")
-                .trim(),
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim(),
             },
           },
           y: {
@@ -291,26 +280,18 @@ const ChartManager = (sandbox) => {
             title: {
               display: true,
               text: "溫度 (℃)",
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-primary")
-                .trim(),
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
             },
             ticks: {
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-secondary")
-                .trim(),
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim(),
             },
           },
         },
       },
     });
   };
-
-  /**
-   * 為圖表的圖例項目增加鍵盤可及性 (Accessibility)
-   * @param {string} chartId - 目標圖表的 ID
-   */
-  const _addKeyboardNavigationToLegend = (chartId) => {
+  
+  const _addKeyboardNavigationToLegend = (chartId) => { 
     const chartElement = document.getElementById(chartId);
     if (!chartElement) return;
     const container = chartElement.closest(
@@ -336,14 +317,11 @@ const ChartManager = (sandbox) => {
     });
   };
 
-  /**
-   * 更新主圖表 (技術溫測實溫分佈圖)
-   * @param {object | null} source - 觸發更新的紀錄物件，或 null 來清空圖表
-   */
   const _updateMainChart = (source) => {
     const chartId = "temperatureChart";
     const ctx = document.getElementById(chartId)?.getContext("2d");
     if (!ctx) return;
+
     if (chartInstances[chartId]) {
       Object.keys(datasetVisibility).forEach((label) => {
         const datasetIndex = chartInstances[chartId].data.datasets.findIndex(
@@ -356,6 +334,7 @@ const ChartManager = (sandbox) => {
       });
       chartInstances[chartId].destroy();
     }
+    
     let recordToChart = null;
     if (source) {
       if (Array.isArray(source)) {
@@ -393,7 +372,7 @@ const ChartManager = (sandbox) => {
               recordToChart,
               `actualTemps.${recordPointKey}.val${i}`
             );
-            if (value !== null && !isNaN(value)) allDataValues.push(value);
+            if (typeof value === 'number') allDataValues.push(value);
             return value;
           }
         }
@@ -425,7 +404,7 @@ const ChartManager = (sandbox) => {
             pointDefinition.id,
             recordToChart
           );
-          if (value !== null && !isNaN(value)) {
+          if (typeof value === 'number') {
             allDataValues.push(value);
           }
           return value;
@@ -448,54 +427,248 @@ const ChartManager = (sandbox) => {
       order: 1,
       hidden: isMachineHidden,
     });
-    let yMin = 0,
-      yMax = 10;
-    const filteredDataValues = allDataValues.filter(
-      (v) => v !== null && !isNaN(v)
-    );
+
+    let yMin = 0;
+    let yMax = 10;
+    const filteredDataValues = allDataValues.filter(v => isFinite(v));
     if (filteredDataValues.length > 0) {
-      let dataMin = Math.min(...filteredDataValues);
-      let dataMax = Math.max(...filteredDataValues);
-      const paddingValue = (dataMax - dataMin) * 0.1 || 5;
-      yMin = Math.floor(dataMin - paddingValue);
-      yMax = Math.ceil(dataMax + paddingValue);
-      if (yMin < 0 && dataMin >= 0) yMin = 0;
+        let dataMin = Math.min(...filteredDataValues);
+        let dataMax = Math.max(...filteredDataValues);
+        const paddingValue = (dataMax - dataMin) * 0.1 || 5;
+        yMin = Math.floor(dataMin - paddingValue);
+        yMax = Math.ceil(dataMax + paddingValue);
+        if (yMin < 0 && dataMin >= 0) {
+            yMin = 0;
+        }
     }
+
+    try {
+        chartInstances[chartId] = new Chart(ctx, {
+          type: "line",
+          data: { labels: chartLabels, datasets: datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: "top",
+                    display: true, 
+                    onClick: (e, legendItem, legend) => {
+                      const chart = legend.chart;
+                      chart.data.datasets.forEach((dataset, index) => {
+                        if (dataset.label === legendItem.text) {
+                          chart.setDatasetVisibility(
+                            index,
+                            !chart.isDatasetVisible(index)
+                          );
+                        }
+                      });
+                      chart.update();
+                      _addKeyboardNavigationToLegend(chartId);
+                    },
+                },
+                title: {
+                    display: true,
+                    text: "技術溫測實溫分佈圖",
+                    font: { size: 16, },
+                    color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
+                },
+                tooltip: {
+                    callbacks: {
+                      label: function (context) {
+                        let label = context.dataset.label || "";
+                        if (label) { label += ": "; }
+                        if (context.parsed.y !== null) {
+                          label += new Intl.NumberFormat("zh-TW", {
+                              maximumFractionDigits: 1,
+                            }).format(context.parsed.y) + " ℃";
+                        }
+                        return label;
+                      },
+                    },
+                },
+                datalabels: {
+                    display: isDataLabelsVisible,
+                    align: 'top',
+                    offset: 6,
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    borderRadius: 4,
+                    color: 'white',
+                    font: {
+                        size: 10,
+                        weight: 'bold',
+                    },
+                    padding: 4,
+                    formatter: (value, context) => {
+                        if (typeof value === 'number') {
+                            if (context.dataset.label === '機台顯示溫度') {
+                                return `💻${value.toFixed(1)}`;
+                            }
+                            return value.toFixed(1);
+                        }
+                        return null;
+                    }
+                }
+            },
+            scales: { 
+              x: {
+                title: {
+                  display: true,
+                  text: "測量點",
+                  color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
+                },
+                ticks: {
+                  color: getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim(),
+                },
+              },
+              y: {
+                beginAtZero: false,
+                min: yMin,
+                max: yMax,
+                title: {
+                  display: true,
+                  text: "溫度 (℃)",
+                  color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
+                },
+                ticks: {
+                  color: getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim(),
+                },
+              },
+            },
+          },
+          plugins: [mainChartNoDataPlugin],
+        });
+        chartInstances[chartId].update();
+        _addKeyboardNavigationToLegend(chartId);
+    } catch(err) { 
+        console.error("★★★ 建立圖表時發生致命錯誤! ★★★", err);
+        console.error(`傳入的Y軸範圍是: min=${yMin}, max=${yMax}`);
+    }
+  };
+
+  const _updateRawDataChart = (payload) => {
+    const chartId = "rawTemperatureChart";
+    const ctx = document.getElementById(chartId)?.getContext("2d");
+    if (!ctx) {
+      return;
+    }
+
+    if (chartInstances[chartId]) {
+      chartInstances[chartId].destroy();
+    }
+
+    const results = payload?.results;
+
+    if (!results || !results.data || !results.data.length === 0) {
+      chartInstances[chartId] = new Chart(ctx, {
+        type: "line",
+        data: { labels: [], datasets: [] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: { display: true, text: "原始溫測數據圖 (CSV 匯入)" },
+            legend: { display: false } 
+          },
+        },
+      });
+      sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
+      return;
+    }
+
+    const dataRows = results.data;
+    const headers = results.meta?.fields || [];
+    const channels = ["CH01", "CH02", "CH03", "CH04", "CH05", "AVE"];
+    const defaultColors = [
+      "rgba(255, 99, 132, 1)",
+      "rgba(54, 162, 235, 1)",
+      "rgba(255, 206, 86, 1)",
+      "rgba(75, 192, 192, 1)",
+      "rgba(153, 102, 255, 1)",
+      "rgba(255, 159, 64, 1)",
+    ];
+
+    const datasets = channels
+      .filter((ch) => headers.includes(ch))
+      .map((channel, index) => {
+        const data = dataRows.map((row, i) => ({
+          x: i * 10,
+          y:
+            row[channel] !== null && row[channel] !== undefined
+              ? parseFloat(row[channel])
+              : null,
+        }));
+
+        const isHidden =
+          rawDatasetVisibility[channel] === undefined
+            ? false
+            : !rawDatasetVisibility[channel];
+
+        return {
+          label: channel,
+          data: data,
+          borderColor: defaultColors[index % defaultColors.length],
+          backgroundColor: defaultColors[index % defaultColors.length].replace(
+            "1)",
+            "0.2)"
+          ),
+          fill: false,
+          tension: 0.1,
+          hidden: isHidden,
+          pointRadius: 0,
+        };
+      });
+
+    const elapsedSeconds = dataRows.map((_, index) => index * 10);
+    const maxSeconds =
+      elapsedSeconds.length > 0 ? elapsedSeconds[elapsedSeconds.length - 1] : 0;
+    const xAxisMax = Math.ceil(maxSeconds / 100) * 100;
+
     chartInstances[chartId] = new Chart(ctx, {
       type: "line",
-      data: { labels: chartLabels, datasets: datasets },
+      data: { datasets: datasets },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
           legend: {
             position: "top",
+            display: true, 
             onClick: (e, legendItem, legend) => {
               const chart = legend.chart;
-              chart.data.datasets.forEach((dataset, index) => {
-                if (dataset.label === legendItem.text) {
-                  chart.setDatasetVisibility(
-                    index,
-                    !chart.isDatasetVisible(index)
-                  );
-                }
+              legend.legendItems.forEach((item) => {
+                rawDatasetVisibility[item.text] = chart.isDatasetVisible(
+                  item.datasetIndex
+                );
               });
+              rawDatasetVisibility[legendItem.text] =
+                !rawDatasetVisibility[legendItem.text];
+
+              chart.setDatasetVisibility(
+                legendItem.datasetIndex,
+                !chart.isDatasetVisible(legendItem.datasetIndex)
+              );
               chart.update();
-              _addKeyboardNavigationToLegend(chartId); // 重新應用鍵盤導航
+              _addKeyboardNavigationToLegend(chartId);
             },
           },
           title: {
             display: true,
-            text: "技術溫測實溫分佈圖",
-            font: {
-              size: 16,
-            },
-            color: getComputedStyle(document.documentElement)
-              .getPropertyValue("--text-primary")
-              .trim(),
+            text: "原始溫測數據圖 (CSV 匯入)",
+            font: { size: 16 },
+            color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
           },
           tooltip: {
+            mode: "index",
+            intersect: false,
             callbacks: {
+              title: function (tooltipItems) {
+                if (tooltipItems.length > 0) {
+                  const seconds = tooltipItems[0].parsed.x;
+                  return `時間: ${(seconds / 60).toFixed(2)} 分鐘 (${seconds}秒)`;
+                }
+                return "";
+              },
               label: function (context) {
                 let label = context.dataset.label || "";
                 if (label) {
@@ -504,7 +677,7 @@ const ChartManager = (sandbox) => {
                 if (context.parsed.y !== null) {
                   label +=
                     new Intl.NumberFormat("zh-TW", {
-                      maximumFractionDigits: 1,
+                      maximumFractionDigits: 2,
                     }).format(context.parsed.y) + " ℃";
                 }
                 return label;
@@ -514,222 +687,46 @@ const ChartManager = (sandbox) => {
         },
         scales: {
           x: {
+            type: "linear",
+            min: 0,
+            max: xAxisMax > 0 ? xAxisMax : 100,
             title: {
               display: true,
-              text: "測量點",
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-primary")
-                .trim(),
+              text: "時間 (分鐘)",
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
             },
             ticks: {
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-secondary")
-                .trim(),
+              stepSize: 100,
+              callback: function (value, index, ticks) {
+                return (value / 60).toFixed(1);
+              },
+              autoSkip: true,
+              maxRotation: 45,
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim(),
             },
           },
           y: {
             beginAtZero: false,
-            min: yMin,
-            max: yMax,
             title: {
               display: true,
               text: "溫度 (℃)",
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-primary")
-                .trim(),
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-primary").trim(),
             },
             ticks: {
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-secondary")
-                .trim(),
+              color: getComputedStyle(document.documentElement).getPropertyValue("--text-secondary").trim(),
             },
           },
+        },
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false,
         },
       },
-      plugins: [mainChartNoDataPlugin],
     });
-    // 確保每次更新圖表後都重新應用鍵盤導航
-    chartInstances[chartId].update();
-    _addKeyboardNavigationToLegend(chartId);
-  };
 
-  /**
-   * 【核心修正】更新（或清除）原始數據圖表的函式
-   * @param {object | null} payload - 包含解析結果的物件 { results }，或 null 來清除圖表
-   */
-  const _updateRawDataChart = (payload) => {
-    const chartId = "rawTemperatureChart";
-    const ctx = document.getElementById(chartId)?.getContext("2d");
-    if (!ctx) {
-      return;
-    }
-
-    // 初始化圖表實例，如果它還不存在
-    if (!chartInstances[chartId]) {
-      chartInstances[chartId] = new Chart(ctx, {
-        type: "line",
-        data: { labels: [], datasets: [] },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: "top",
-              onClick: (e, legendItem, legend) => {
-                const chart = legend.chart;
-                chart.data.datasets.forEach((dataset, index) => {
-                  if (dataset.label === legendItem.text) {
-                    chart.setDatasetVisibility(
-                      index,
-                      !chart.isDatasetVisible(index)
-                    );
-                  }
-                });
-                chart.update();
-                // 重新應用鍵盤導航
-                _addKeyboardNavigationToLegend(chartId);
-              },
-            },
-            title: {
-              display: true,
-              text: "原始溫測數據圖 (CSV 匯入)",
-              font: {
-                size: 16,
-              },
-              color: getComputedStyle(document.documentElement)
-                .getPropertyValue("--text-primary")
-                .trim(),
-            },
-            tooltip: {
-              callbacks: {
-                label: function (context) {
-                  let label = context.dataset.label || "";
-                  if (label) {
-                    label += ": ";
-                  }
-                  if (context.parsed.y !== null) {
-                    label +=
-                      new Intl.NumberFormat("zh-TW", {
-                        maximumFractionDigits: 1,
-                      }).format(context.parsed.y) + " ℃";
-                  }
-                  return label;
-                },
-              },
-            },
-          },
-          scales: {
-            x: {
-              title: {
-                display: true,
-                text: "時間 (秒)",
-                color: getComputedStyle(document.documentElement)
-                  .getPropertyValue("--text-primary")
-                  .trim(),
-              },
-              ticks: {
-                color: getComputedStyle(document.documentElement)
-                  .getPropertyValue("--text-secondary")
-                  .trim(),
-              },
-            },
-            y: {
-              beginAtZero: false,
-              title: {
-                display: true,
-                text: "溫度 (℃)",
-                color: getComputedStyle(document.documentElement)
-                  .getPropertyValue("--text-primary")
-                  .trim(),
-              },
-              ticks: {
-                color: getComputedStyle(document.documentElement)
-                  .getPropertyValue("--text-secondary")
-                  .trim(),
-              },
-            },
-          },
-        },
-      });
-    }
-
-    const chart = chartInstances[chartId];
-    const results = payload?.results;
-
-    if (!results || !results.data || results.data.length === 0) {
-      // 修正了 !results.data.length === 0 的邏輯
-      // 在清除數據前保存可見性狀態
-      if (chart.data.datasets.length > 0) {
-        Object.keys(rawDatasetVisibility).forEach((label) => {
-          const datasetIndex = chart.data.datasets.findIndex(
-            (ds) => ds.label === label
-          );
-          if (datasetIndex !== -1) {
-            rawDatasetVisibility[label] = chart.isDatasetVisible(datasetIndex);
-          }
-        });
-      }
-      chart.data.labels = [];
-      chart.data.datasets = [];
-      chart.update();
-      sandbox.publish("toggle-raw-chart-export-button", { disabled: true });
-      return;
-    }
-
-    const dataRows = results.data;
-    const headers = results.meta?.fields || []; // 從 results.meta.fields 獲取標頭
-    const channels = ["CH01", "CH02", "CH03", "CH04", "CH05", "AVE"];
-    const defaultColors = [
-      "rgba(255, 99, 132, 1)", // Red
-      "rgba(54, 162, 235, 1)", // Blue
-      "rgba(255, 206, 86, 1)", // Yellow
-      "rgba(75, 192, 192, 1)", // Green
-      "rgba(153, 102, 255, 1)", // Purple
-      "rgba(255, 159, 64, 1)", // Orange
-    ];
-
-    // 清除舊數據
-    chart.data.datasets = [];
-
-    // 重新創建數據集
-    channels
-      .filter((ch) => headers.includes(ch)) // 只包含 CSV 中存在的通道
-      .forEach((channel, index) => {
-        const data = dataRows.map((row) => {
-          const value = row[channel];
-          return value === null || value === undefined
-            ? null
-            : parseFloat(value);
-        });
-
-        // 重新應用保存的可見性狀態，如果沒有保存過則預設為可見
-        const isHidden =
-          rawDatasetVisibility[channel] === undefined
-            ? false // 預設為可見
-            : !rawDatasetVisibility[channel];
-
-        chart.data.datasets.push({
-          label: channel,
-          data: data,
-          borderColor: defaultColors[index % defaultColors.length],
-          backgroundColor: defaultColors[index % defaultColors.length].replace(
-            "1)",
-            "0.2)"
-          ), // 帶透明度的背景色
-          fill: false,
-          tension: 0.1,
-          hidden: isHidden, // 應用保存的狀態
-          pointRadius: 0, // 點半徑設為0，只顯示線條
-        });
-      });
-
-    // 原始數據的時間標籤通常是索引乘以間隔 (例如每10秒一筆數據)
-    // 假設每筆數據間隔 10 秒
-    chart.data.labels = dataRows.map((_, index) => index * 10);
-
-    chart.update();
     sandbox.publish("toggle-raw-chart-export-button", { disabled: false });
-    _addKeyboardNavigationToLegend(chartId); // 確保每次更新圖表後都重新應用鍵盤導航
+    _addKeyboardNavigationToLegend(chartId);
   };
 
   return {
@@ -746,7 +743,20 @@ const ChartManager = (sandbox) => {
       sandbox.subscribe("request-chart-preview", (recordData) =>
         _updateMainChart(recordData)
       );
-      sandbox.subscribe("plot-raw-data-chart", _updateRawDataChart); // 新增的訂閱
+      sandbox.subscribe("plot-raw-data-chart", _updateRawDataChart);
+      
+      sandbox.subscribe("request-toggle-datalabels", ({ chartId, visible }) => {
+        const chart = chartInstances[chartId];
+        if (chart) {
+            if (chartId === 'temperatureChart') {
+                isDataLabelsVisible = visible;
+            } else if (chartId === 'dashboardRtoChart') {
+                isAirVolumeDataLabelsVisible = visible;
+            }
+            chart.options.plugins.datalabels.display = visible;
+            chart.update();
+        }
+      });
 
       _updateMainChart(null);
       _updateRawDataChart(null);
@@ -756,5 +766,4 @@ const ChartManager = (sandbox) => {
     exportChart,
   };
 };
-
 export default ChartManager;

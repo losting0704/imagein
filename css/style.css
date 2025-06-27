@@ -1,14 +1,16 @@
 /* ---
-乾燥機數據紀錄器 - 雙主題 CSS 樣式表
-預設主題：煙燻橄欖綠 (評價TEAM用)
-切換主題：經典紅白機 (條件設定用)
+乾燥機數據紀錄器 - 雙主題 CSS 樣式表 (圖表Y軸問題修正版 v4)
+說明：此版本修正了 Chart.js 響應式佈局的核心問題。
+修改核心：
+1. 在 HTML 中，將 <canvas> 包在一個新的 <div id="temperatureChartWrapper"> 中。
+2. ★★★ 核心修正：將原本應用在 #temperatureChart 上的定位和高度樣式，
+   轉移到新的父層 wrapper #temperatureChartWrapper 上。
+   這為 Chart.js 提供了一個具有明確邊界的父容器，從而解決了響應式佈局的無限循環問題。
 --- */
 
 /* ============================================= */
-/* 1. 顏色與主題定義                           */
+/* 1. 顏色與主題定義 (保留原始設定)             */
 /* ============================================= */
-
-/* --- 預設主題：煙燻橄欖綠 (評價TEAM用) --- */
 :root {
   /* 基底顏色 */
   --bg-page: #e3e8e3; /* 頁面背景 - 淺橄欖灰 */
@@ -18,7 +20,6 @@
   --bg-radio-group: #d8ddd8; /* Radio 按鈕群組背景 */
   --bg-modal-overlay: rgba(0, 0, 0, 0.6);
   --bg-disabled-input: #e0e0e0;
-
   /* 主要品牌色：煙燻橄欖綠 */
   --bg-section-header: #3e524b; /* 區塊標頭 */
   --bg-table-header: #3e524b; /* 表格標頭 */
@@ -27,12 +28,10 @@
   --text-on-light-bg: #3e524b; /* (新增) 淺色背景上的文字顏色 */
   --border-input-focus: #3e524b; /* 輸入框焦點邊框顏色 */
   --border-radio-indicator-checked: #3e524b; /* Radio 指示器選中邊框 */
-
   /* ▼▼▼ 新增：全域圖示按鈕變數 ▼▼▼ */
   --icon-btn-color: #333; /* 預設圖示顏色：深灰色 */
   --icon-btn-hover-bg: rgba(0, 0, 0, 0.08); /* 預設滑鼠懸停背景色 */
   /* ▲▲▲ 新增結束 ▲▲▲ */
-
   /* 其他顏色 */
   --bg-table-row-even: #e9f0e8;
   --bg-table-row-hover: #d9e4da;
@@ -47,7 +46,6 @@
   --border-info: #728c81;
   --border-disabled-input: #bdbdbd;
   --border-radio-indicator: #728c81;
-
   /* 陰影 */
   --shadow-container: 0 4px 12px rgba(62, 82, 75, 0.2);
   --shadow-input-area: 0 2px 5px rgba(62, 82, 75, 0.1);
@@ -56,7 +54,6 @@
   --shadow-button-hover: 0 4px 8px rgba(0, 0, 0, 0.15);
   --shadow-button-active: 0 1px 2px rgba(0, 0, 0, 0.1);
   --shadow-modal: 0 5px 15px rgba(0, 0, 0, 0.3);
-
   /* 字體與圓角 */
   --font-main: "Noto Sans TC", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   --line-height-base: 1.6;
@@ -64,14 +61,12 @@
   --border-radius-section: 6px;
   --border-radius-input: 4px;
   --border-radius-button: 6px;
-
   /* 按鈕顏色 */
   --btn-text-default: #f8f5ec; /* 深色按鈕上的文字使用米白色 */
   --btn-save-bg: #728c81; /* 儲存/更新按鈕 - 中間調的橄欖綠 */
   --btn-save-bg-hover: #627b71;
   --btn-update-bg: #728c81;
   --btn-update-bg-hover: #627b71;
-
   /* 次要按鈕 - 統一使用【霧面黃銅金】作為跨主題的連結色 */
   --btn-export-bg: #c19a6b;
   --btn-export-bg-hover: #b08a5a;
@@ -80,7 +75,6 @@
   --btn-edit-text: #f8f5ec;
   --btn-edit-bg: #c19a6b;
   --btn-edit-bg-hover: #b08a5a;
-
   /* 特殊按鈕 */
   --btn-import-bg: #889696;
   --btn-import-bg-hover: #788686;
@@ -90,7 +84,6 @@
   --btn-cancel-bg-hover: #788686;
   --btn-disabled-bg: #a8b0a8;
   --btn-disabled-text: #656e65;
-
   /* 彈窗按鈕 */
   --btn-modal-yes-bg: #b76e6e;
   --btn-modal-yes-bg-hover: #a75e5e;
@@ -99,7 +92,6 @@
   --btn-raw-data-bg: #c19a6b; /* 與 info/export 統一 */
   --btn-raw-data-bg-hover: #b08a5a;
 }
-
 /* --- 切換主題：經典紅白機 (條件設定用) --- */
 .theme-condition-setting {
   /* 基底顏色：更新為帶有紅色調的淺色系 */
@@ -108,7 +100,6 @@
   --bg-input-area: #e0dadc;
   --bg-input-field: #f8f5ec;
   --bg-radio-group: #e0dadc;
-
   /* 主要品牌色：維持深酒紅色 */
   --bg-section-header: #7c2d2d;
   --bg-table-header: #7c2d2d;
@@ -118,7 +109,6 @@
   --border-radio-indicator-checked: #7c2d2d;
   --shadow-container: 0 4px 12px rgba(124, 45, 45, 0.2);
   --shadow-input-area: 0 2px 5px rgba(124, 45, 45, 0.1);
-
   /* 按鈕顏色：酒紅與霧面金的搭配 */
   --btn-save-bg: #7c2d2d;
   --btn-save-bg-hover: #6b2626;
@@ -127,7 +117,7 @@
 }
 
 /* ============================================= */
-/* 2. 通用與元件樣式                           */
+/* 2. 通用與元件樣式 (保留大部分原始設定)         */
 /* ============================================= */
 body {
   font-family: var(--font-main);
@@ -143,7 +133,6 @@ body {
   opacity: 0;
   transition: opacity 0.5s ease-in-out;
 }
-
 .container {
   max-width: 1200px;
   width: 100%;
@@ -153,8 +142,6 @@ body {
   box-shadow: var(--shadow-container);
   padding-bottom: 50px;
 }
-
-/* --- 全域圖示按鈕 (Icon Button) 樣式 (使用 CSS 變數) --- */
 .icon-btn {
   border: none;
   background-color: transparent;
@@ -170,23 +157,19 @@ body {
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
-
 .icon-btn svg {
   stroke: var(--icon-btn-color);
   fill: none;
   width: 18px;
   height: 18px;
 }
-
 .icon-btn:hover {
   background-color: var(--icon-btn-hover-bg);
 }
-
 .dark-bg-context {
   --icon-btn-color: #ffffff;
   --icon-btn-hover-bg: rgba(255, 255, 255, 0.2);
 }
-
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -202,21 +185,17 @@ body {
   opacity: 0;
   transition: opacity 0.3s ease-in-out, visibility 0s linear 0.3s;
 }
-
 #loadingOverlay {
   z-index: 9999;
 }
-
 #confirmModalOverlay {
   z-index: 10000;
 }
-
 .modal-overlay.visible {
   visibility: visible;
   opacity: 1;
   transition-delay: 0s;
 }
-
 .modal-content {
   background: var(--bg-container);
   padding: 30px 40px;
@@ -226,21 +205,17 @@ body {
   max-width: 90%;
   width: 450px;
 }
-
 #confirmModalMessage {
   margin: 0 0 25px 0;
   font-size: 1.1em;
   font-weight: 500;
   line-height: 1.5;
 }
-
 .modal-buttons {
   display: flex;
   justify-content: center;
   gap: 15px;
 }
-
-/* --- 圖片燈箱 (Image Modal) --- */
 .image-modal-overlay {
   position: fixed;
   top: 0;
@@ -251,17 +226,15 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 10001; /* 圖片燈箱最高 */
+  z-index: 10001;
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.3s ease, visibility 0.3s ease;
 }
-
 .image-modal-overlay.visible {
   visibility: visible;
   opacity: 1;
 }
-
 .image-modal-content {
   position: relative;
   max-width: 90vw;
@@ -269,11 +242,9 @@ body {
   transform: scale(0.9);
   transition: transform 0.3s ease;
 }
-
 .image-modal-overlay.visible .image-modal-content {
   transform: scale(1);
 }
-
 #modalImage {
   display: block;
   width: 100%;
@@ -281,7 +252,6 @@ body {
   object-fit: contain;
   border-radius: var(--border-radius-section);
 }
-
 .image-modal-caption {
   text-align: center;
   color: #fff;
@@ -289,7 +259,6 @@ body {
   font-weight: bold;
   margin-top: 15px;
 }
-
 .image-modal-close {
   position: absolute;
   top: 15px;
@@ -300,11 +269,9 @@ body {
   cursor: pointer;
   transition: color 0.2s;
 }
-
 .image-modal-close:hover {
   color: #bbb;
 }
-
 h1,
 h2 {
   color: var(--text-primary);
@@ -760,8 +727,6 @@ table {
 .data-table tr.row-editing:hover {
   background-color: #faf3d4;
 }
-
-/* --- 歷史數據表格凍結欄位樣式 --- */
 .data-table th.sticky-col,
 .data-table td.sticky-col {
   position: -webkit-sticky;
@@ -789,7 +754,6 @@ table {
 .data-table td.sticky-col:last-of-type {
   box-shadow: 1px 0 0 0 var(--border-table);
 }
-
 .auto-calc-indicator {
   width: 1.1em;
   height: 1.1em;
@@ -1104,37 +1068,84 @@ table {
 .custom-radio:hover .radio-indicator {
   border-color: var(--border-radio-indicator-checked);
 }
+
+/* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
+/* ★★★ 以下為圖表區塊的核心修正 (v4) ★★★ */
+/* ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★ */
+
 .chart-container {
   margin-top: 40px;
-  padding: 55px;
-  background-color: var(--bg-container);
+  padding: 25px;
+  background-color: var(--bg-input-area);
   border-radius: var(--border-radius-container);
-  box-shadow: var(--shadow-container);
-  max-width: 950px;
+  box-shadow: var(--shadow-input-area);
+  max-width: 1050px;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
-  height: 500px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
 }
+
 .chart-container h2 {
   margin-top: 0;
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+  text-align: center;
 }
-#temperatureChart {
-  flex-grow: 1;
+
+/* ★★★ 核心修正：為 Chart.js 提供一個有固定高度和相對定位的父層容器 ★★★ */
+#temperatureChartWrapper {
+  position: relative; /* 必須，為 Chart.js 提供定位上下文 */
+  height: 450px; /* 必須，提供固定的繪圖高度，防止無限延伸 */
   width: 100%;
+  background-color: var(--bg-container);
+  padding: 15px;
+  border-radius: var(--border-radius-section);
+  box-sizing: border-box;
 }
+
+/* ★★★ 核心修正：讓 canvas 本身不要有多餘的樣式，由 Chart.js 自動填滿父層 ★★★ */
+#temperatureChart {
+  /* 此處留空，Chart.js 會自動處理其大小以填充 #temperatureChartWrapper */
+}
+
+.export-option-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.export-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px;
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: var(--border-radius-button);
+}
+
+.styled-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.export-checkbox-wrapper label {
+  cursor: pointer;
+  font-size: 0.9em;
+  user-select: none;
+  color: var(--text-primary);
+}
+
+/* --- (以下為您原始 CSS 的其餘部分，全數保留) --- */
+
 .raw-data-chart-section {
   margin-top: 40px;
   padding: 30px;
-  background-color: var(--bg-container);
+  background-color: var(--bg-input-area);
   border-radius: var(--border-radius-container);
-  box-shadow: var(--shadow-container);
-  max-width: 950px;
+  box-shadow: var(--shadow-input-area);
+  max-width: 1050px;
   width: 100%;
   margin-left: auto;
   margin-right: auto;
@@ -1172,7 +1183,7 @@ table {
 }
 .raw-data-chart-section .button {
   display: block;
-  margin: 15px auto;
+  margin: 15px auto 0 auto;
 }
 .raw-data-chart-section .button-raw-data {
   background-color: var(--btn-raw-data-bg);
@@ -1189,6 +1200,9 @@ table {
   width: 100%;
   height: 450px;
   margin-top: 25px;
+  background-color: var(--bg-container);
+  padding: 15px;
+  border-radius: var(--border-radius-section);
 }
 @media (max-width: 600px) {
   .raw-data-chart-section {
@@ -1231,130 +1245,91 @@ div[aria-label="Chart legend"] li:focus {
 /* 3. 新增與修改的 HMI 相關樣式 (最終整合版)       */
 /* ================================================= */
 
-/* --- HMI 佈局與縮放 --- */
 .hmi-layout-container {
-  position: relative; /* 關鍵：讓內部的絕對定位子元素有所依據 */
+  position: relative;
   width: 100%;
-  max-width: 1000px; /* 您可以調整這個最大寬度來控制圖表在寬螢幕上的大小 */
-  margin: 15px auto 0 auto; /* 調整與標題的間距，並水平置中 */
+  max-width: 1000px;
+  margin: 15px auto 0 auto;
 }
-
 .hmi-layout-container .hmi-background {
-  display: block; /* 避免圖片下方出現多餘的空白 */
-  width: 100%; /* 寬度永遠填滿父容器 */
-  height: auto; /* 高度自動，以維持 SVG 的原始長寬比 */
-  user-select: none; /* 讓使用者無法選取背景圖，提升體驗 */
+  display: block;
+  width: 100%;
+  height: auto;
+  user-select: none;
 }
-
 .hmi-input-field {
-  position: absolute; /* 關鍵：讓輸入框可以脫離正常文檔流，自由定位 */
+  position: absolute;
   padding: 5px;
-  box-sizing: border-box; /* 確保 padding 不會影響元素的總寬高 */
+  box-sizing: border-box;
 }
-
-/* --- 統一 HMI 區塊與其他區塊的樣式 (條件設定模式) --- */
-
-/* 讓包含 HMI 圖的區塊，也使用與 Damper 區塊相同的背景和陰影，達成視覺統一 */
 .theme-condition-setting .record-section:has(.hmi-layout-container) {
   background-color: var(--bg-input-area);
   box-shadow: var(--shadow-input-area);
-
   padding: 20px;
   border-radius: var(--border-radius-section);
   margin-top: 30px;
 }
-
-/* --- HMI 輸入框本身樣式 (條件設定模式) --- */
 .theme-condition-setting .hmi-input-field {
-  /* 使用半透明的背景，營造層次感 */
-  background-color: rgba(248, 245, 236, 0.2); /* 米白色的 20% 透明度 */
-
-  /* 加上背景模糊效果，產生磨砂質感 */
+  background-color: rgba(248, 245, 236, 0.2);
   -webkit-backdrop-filter: blur(4px);
   backdrop-filter: blur(4px);
-
-  /* 邊框使用主題中的點綴色，增加精緻感 */
-  border: 1px solid rgba(193, 154, 107, 0.6); /* 霧面黃銅金的 60% 透明度 */
-
-  /* 圓角與陰影 */
+  border: 1px solid rgba(193, 154, 107, 0.6);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease-in-out;
 }
-
 .theme-condition-setting .hmi-input-field:hover {
   background-color: rgba(248, 245, 236, 0.3);
   border-color: rgba(193, 154, 107, 0.9);
 }
-
-/* HMI 區塊內的標籤文字 */
 .theme-condition-setting .hmi-input-field .form-group label {
-  color: #7c2d2d; /* ★ 關鍵修改：使用深酒紅色以確保在淺色背景上的可讀性 */
+  color: #7c2d2d;
   font-weight: bold;
-  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7); /* 文字陰影也改成淺色來增加立體感 */
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.7);
 }
-
-/* HMI 區塊內的輸入欄位 */
 .theme-condition-setting .hmi-input-field .form-group input {
-  background-color: rgba(248, 245, 236, 0.9); /* 輸入框背景維持較高的不透明度 */
-  color: #7c2d2d; /* 輸入的文字使用深酒紅色 */
-  border: 1px solid transparent; /* 預設無邊框，靠容器的邊框即可 */
+  background-color: rgba(248, 245, 236, 0.9);
+  color: #7c2d2d;
+  border: 1px solid transparent;
 }
-
-/* 輸入框獲得焦點時的樣式 */
 .theme-condition-setting .hmi-input-field .form-group input:focus {
-  border-color: #c19a6b; /* 霧面黃銅金 */
-  box-shadow: 0 0 10px rgba(193, 154, 107, 0.7); /* 發出柔和的金色光暈 */
+  border-color: #c19a6b;
+  box-shadow: 0 0 10px rgba(193, 154, 107, 0.7);
 }
-
-/* --- Accordion (手風琴) 樣式 --- */
-
-/* 讓標題看起來可以點擊 */
 .accordion-toggle {
   cursor: pointer;
-  position: relative; /* 為了定位箭頭圖示 */
-  user-select: none; /* 防止選取到標題文字 */
+  position: relative;
+  user-select: none;
 }
-
-/* 使用 ::after 偽元素來建立一個箭頭圖示 */
 .accordion-toggle::after {
   content: "▼";
   font-size: 0.8em;
   color: var(--text-on-dark-bg);
   position: absolute;
-  right: 20px; /* 將箭頭放在右邊 */
+  right: 20px;
   transition: transform 0.3s ease;
 }
-
-/* 當手風琴展開時，將箭頭旋轉 */
 .accordion-toggle.active::after {
   transform: rotate(180deg);
 }
-
-/* 手風琴內容區塊的樣式 */
 .accordion-content {
-  max-height: 0; /* 預設收合 */
+  max-height: 0;
   overflow: hidden;
   transition: max-height 0.4s ease-out, padding 0.4s ease-out;
-  background-color: var(--bg-input-area); /* 確保內容區塊有背景色 */
-  padding: 0 20px; /* 預設沒有上下 padding */
+  background-color: var(--bg-input-area);
+  padding: 0 20px;
   border-radius: 0 0 var(--border-radius-section) var(--border-radius-section);
 }
-/* --- History Controls --- */
 .history-controls {
-  padding-top: 10px; /* 與上方留下一點空間 */
-  margin-bottom: 20px; /* 與下方的表格之間留出足夠的間距 */
+  padding-top: 10px;
+  margin-bottom: 20px;
 }
-
-/* --- Table Sorting Styles --- */
 .data-table th.sortable {
   cursor: pointer;
   user-select: none;
 }
 .data-table th.sortable:hover {
-  background-color: var(
-    --btn-save-bg-hover
-  ); /* 使用一個較深的顏色作為 hover 效果 */
+  background-color: var(--btn-save-bg-hover);
 }
 .sort-arrow {
   font-size: 0.8em;
@@ -1368,7 +1343,6 @@ div[aria-label="Chart legend"] li:focus {
   background-color: var(--bg-input-area);
   border-radius: var(--border-radius-section);
 }
-
 .dashboard-chart {
   width: 100%;
   height: 350px;
@@ -1377,11 +1351,9 @@ div[aria-label="Chart legend"] li:focus {
   border-radius: var(--border-radius-section);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
 }
-
-/* 黃金樣板按鈕樣式 */
 .button.button-icon {
   padding: 6px 10px;
-  font-size: 1.2em; /* 讓星星大一點 */
+  font-size: 1.2em;
   line-height: 1;
   background-color: transparent;
   color: #ccc;
@@ -1389,42 +1361,21 @@ div[aria-label="Chart legend"] li:focus {
   border: 1px solid #ccc;
   transition: all 0.2s ease;
 }
-
 .button.button-icon:hover {
   color: #e6b400;
   border-color: #e6b400;
   transform: scale(1.1);
 }
-
-/* 被選為黃金樣板的資料行樣式 */
 .data-table tr.golden-batch-row,
 .data-table tr.golden-batch-row:hover {
-  background-color: #fffbe6; /* 淡黃色背景 */
+  background-color: #fffbe6;
   font-weight: bold;
 }
-
-/* 當一行為黃金樣板時，其按鈕的樣式 */
 .data-table tr.golden-batch-row .golden-batch-btn {
   color: #e6b400;
   border-color: #e6b400;
   box-shadow: 0 0 5px rgba(230, 180, 0, 0.5);
 }
-.dashboard-container {
-  margin-top: 25px;
-  margin-bottom: 25px;
-  padding: 20px;
-  background-color: var(--bg-input-area);
-  border-radius: var(--border-radius-section);
-}
-.dashboard-chart {
-  width: 100%;
-  height: 350px; /* 您可以調整這個高度 */
-  background-color: var(--bg-container);
-  padding: 15px;
-  border-radius: var(--border-radius-section);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
-}
-/* --- Pagination --- */
 .pagination-container {
   display: flex;
   justify-content: center;
@@ -1433,7 +1384,6 @@ div[aria-label="Chart legend"] li:focus {
   gap: 5px;
   flex-wrap: wrap;
 }
-
 .pagination-button {
   min-width: 40px;
   border: 1px solid var(--border-input);
@@ -1446,105 +1396,69 @@ div[aria-label="Chart legend"] li:focus {
   font-weight: 500;
   line-height: 1;
 }
-
 .pagination-button:hover:not(:disabled) {
   background-color: var(--bg-table-row-hover);
   border-color: var(--border-input-focus);
 }
-
 .pagination-button.active {
   background-color: var(--bg-section-header);
   color: var(--text-on-dark-bg);
   border-color: var(--bg-section-header);
   font-weight: bold;
 }
-
 .pagination-button:disabled {
-  background-color: var(--bg-disabled-input);
+  background-color: var(--btn-disabled-bg);
   color: var(--text-disabled-input);
   cursor: not-allowed;
   opacity: 0.7;
 }
-
 .pagination-ellipsis {
   padding: 8px 4px;
   color: var(--text-disabled-input);
 }
-
-/* ---
-  針對特定區塊的微調
---- */
-
-/* ★★★ 最終修正點 ★★★ */
-/* 移除此處的特殊規則，將邏輯交給 uiManager.js 處理 */
-/*
-#evaluationTeam_technicalWind .accordion-toggle.active + .accordion-content {
-  padding-bottom: 40px !important;
-}
-*/
-
-/* --- Damper 標題與圖示按鈕的排版修正 --- */
-
-/* 1. 定義新包裝容器的 flexbox 佈局 */
 .header-wrapper {
   display: flex;
   align-items: center;
-  /* 沿用原本 section-header 的背景、圓角等樣式 */
   background-color: var(--bg-section-header);
   color: var(--text-on-dark-bg);
   border-radius: var(--border-radius-section);
   margin-top: 25px;
-  /* 移除下邊距，讓它和下方的 content 緊貼 */
   margin-bottom: 0;
 }
-
-/* 2. 調整包裝容器內的標題樣式 */
 .header-wrapper > .section-header {
-  flex-grow: 1; /* 讓標題文字部分自動填滿所有剩餘空間 */
-  margin: 0; /* 移除 h2 元素自帶的 margin */
-  padding-right: 0; /* 移除右側內邊距，避免與按鈕衝突 */
-  /* 移除自身的下邊距，因為已由父容器 header-wrapper 控制 */
+  flex-grow: 1;
+  margin: 0;
+  padding-right: 0;
   margin-bottom: 0 !important;
-  /* 調整圓角，讓右側變成直角，與按鈕無縫銜接 */
   border-bottom-right-radius: 0;
   border-top-right-radius: 0;
 }
-
-/* 3. 調整包裝容器內的按鈕樣式 */
 .header-wrapper > #viewDamperLayoutBtn {
-  margin-right: 15px; /* 與右側邊界留下一點空間 */
-  margin-left: 0; /* 移除原本的左邊距 */
-  /* 強制設定圖示顏色為白色，以匹配深色背景 */
+  margin-right: 15px;
+  margin-left: 0;
   --icon-btn-color: #ffffff;
   --icon-btn-hover-bg: rgba(255, 255, 255, 0.2);
 }
-
-/* 4. 修正 accordion-content 的上邊界，讓它看起來跟 header-wrapper 相連 */
 .header-wrapper + .accordion-content {
   border-top-left-radius: 0;
   border-top-right-radius: 0;
 }
-/* /css/style.css */
-
-/* ... 在檔案結尾處加上 ... */
 .raw-data-status {
   padding: 10px 15px;
-  background-color: #e0f2f1; /* 類似 info message 的背景色 */
+  background-color: #e0f2f1;
   border: 1px solid var(--border-info);
   border-radius: var(--border-radius-section);
   margin: 20px auto;
   text-align: center;
   font-weight: 500;
-  display: none; /* 預設隱藏 */
+  display: none;
   align-items: center;
   justify-content: center;
   gap: 15px;
 }
-
 .raw-data-status.visible {
-  display: flex; /* 當有內容時顯示 */
+  display: flex;
 }
-
 .raw-data-status .clear-raw-data-btn {
   background: none;
   border: 1px solid var(--text-error);
@@ -1555,7 +1469,6 @@ div[aria-label="Chart legend"] li:focus {
   cursor: pointer;
   transition: all 0.2s ease;
 }
-
 .raw-data-status .clear-raw-data-btn:hover {
   background: var(--text-error);
   color: white;

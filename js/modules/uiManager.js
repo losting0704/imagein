@@ -1,6 +1,5 @@
-// /js/modules/uiManager.js (完整註釋版)
+// /js/modules/uiManager.js (作用域修正版)
 
-// 從設定檔中引入必要的設定物件和函式
 import {
   generateFieldConfigurations,
   getAirVolumeMeasurementsByModel,
@@ -9,25 +8,19 @@ import {
   hmiFieldsByModel,
   damperLayoutsByModel,
 } from "./config.js";
-// 引入工具函式庫
 import * as utils from "./utils.js";
 
-// UIManager 模組：負責所有與 UI 相關的操作，包括渲染、事件處理和狀態管理
 const UIManager = (sandbox) => {
   // --- 模組私有變數 ---
-  const dom = {}; // 用於儲存快取的 DOM 元素
-  let currentDryerModel = "vt8"; // 當前選擇的乾燥機型號
-  let fieldConfigurations = []; // 當前型號的所有欄位設定
-  let selectedToCompareIds = []; // 用於比較圖表的紀錄 ID 陣列
-  let editingRecordId = null; // 當前正在編輯的紀錄 ID
-  let tempRawData = null; // 暫存從文字框解析後的 Raw Data 物件
+  const dom = {};
+  let currentDryerModel = "vt8";
+  let fieldConfigurations = [];
+  let selectedToCompareIds = [];
+  let editingRecordId = null;
+  let tempRawData = null;
 
-  // --- 模組私有函式 (重構後) ---
+  // --- 模組私有函式 ---
 
-  /**
-   * 獲取當前選擇的紀錄類型 ('evaluationTeam' 或 'conditionSetting')
-   * @returns {string}
-   */
   const getCurrentRecordType = () => {
     const checkedRadio = document.querySelector(
       'input[name="recordType"]:checked'
@@ -35,17 +28,10 @@ const UIManager = (sandbox) => {
     return checkedRadio ? checkedRadio.value : "evaluationTeam";
   };
 
-  /**
-   * 獲取當前選擇的乾燥機型號
-   * @returns {string} - e.g., 'vt8'
-   */
   const getCurrentDryerModel = () => {
     return dom.dryerModelSelect?.value.toLowerCase() || currentDryerModel;
   };
 
-  /**
-   * 快取所有需要頻繁操作的 DOM 元素，以提升效能。
-   */
   const cacheDom = () => {
     const D = (id) => document.getElementById(id);
     Object.assign(dom, {
@@ -67,6 +53,8 @@ const UIManager = (sandbox) => {
       exportCsvBtn: D("exportCsvBtn"),
       exportChartBtn: D("exportChartBtn"),
       exportRawChartButton: D("exportRawChartButton"),
+      exportAirVolumeChartBtn: D("exportAirVolumeChartBtn"),
+      exportTempCompareChartBtn: D("exportTempCompareChartBtn"),
       viewDamperLayoutBtn: D("viewDamperLayoutBtn"),
       airAndExternalGrid: D("evaluationTeam_airAndExternal_grid"),
       airVolumeGrid: D("airVolumeGrid"),
@@ -103,14 +91,20 @@ const UIManager = (sandbox) => {
       historyCsvInput: D("historyCsvInputForMasterCreation"),
       masterJsonInput: D("masterJsonInputForLoad"),
       dailyJsonInput: D("dailyJsonInputForMerge"),
-      rawDataStatusContainer: D("rawDataStatusContainer"), // 確保這個 DOM 元素被快取
+      rawDataStatusContainer: D("rawDataStatusContainer"),
+      loadMasterDbBtn: D("loadMasterDbBtn"),
+      createMasterDbBtn: D("createMasterDbBtn"),
+      mergeToMasterBtn: D("mergeToMasterBtn"),
+      exportForPowerBIBtn: D("exportForPowerBIBtn"),
+      exportDailyJsonBtn: D("exportDailyJsonBtn"),
+      toggleDataLabelsBtn: D("toggleDataLabelsBtn"),
+      includeLegendTech: D("includeLegend_tech"),
+      includeLegendRaw: D("includeLegend_raw"),
+      includeLegendAir: D("includeLegend_air"),
+      includeLegendCompare: D("includeLegend_compare"),
     });
   };
 
-  /**
-   * 更新 Raw Data 狀態顯示區塊 (用於貼上資料的場景)
-   * @param {boolean} hasData - 是否有成功貼上資料
-   */
   const updateRawDataStatus = (hasData) => {
     if (dom.rawDataStatusContainer) {
       if (hasData) {
@@ -122,14 +116,11 @@ const UIManager = (sandbox) => {
       } else {
         dom.rawDataStatusContainer.innerHTML = "";
         dom.rawDataStatusContainer.classList.remove("visible");
-        if (dom.rawCsvTextArea) dom.rawCsvTextArea.value = ""; // 同時清空文字區
+        if (dom.rawCsvTextArea) dom.rawCsvTextArea.value = "";
       }
     }
   };
 
-  /**
-   * 將日期時間輸入框設定為當前時間
-   */
   const setDateTimeToNow = () => {
     const now = new Date();
     const timezoneOffset = now.getTimezoneOffset() * 60000;
@@ -140,10 +131,6 @@ const UIManager = (sandbox) => {
     }
   };
 
-  /**
-   * 根據輸入的風速和溫度，即時計算並更新風量
-   * @param {string} measureId - 測量點的 ID
-   */
   const updateAirVolumeRow = (measureId) => {
     const measure = getAirVolumeMeasurementsByModel(currentDryerModel).find(
       (m) => m.id === measureId
@@ -167,10 +154,6 @@ const UIManager = (sandbox) => {
     }
   };
 
-  /**
-   * 根據輸入的5點溫度，即時計算並更新溫差
-   * @param {string} pointId - 溫測點的 ID
-   */
   const updateTechTempRow = (pointId) => {
     const inputs = Array.from({ length: 5 }, (_, i) =>
       document.getElementById(`techTemp_${pointId}_${i + 1}`)
@@ -190,14 +173,9 @@ const UIManager = (sandbox) => {
     }
   };
 
-  /**
-   * 根據選擇的機型，動態產生「風量設定&機外顯示」區塊的輸入欄位
-   * @param {string} dryerModel - 乾燥機型號
-   */
   const renderAirAndExternalInputs = (dryerModel) => {
     if (!dom.airAndExternalGrid) return;
     dom.airAndExternalGrid.innerHTML = "";
-    // 確保這裡的 fieldConfigurations 使用的是當前模組作用域中的變數
     fieldConfigurations = generateFieldConfigurations(dryerModel);
     const airAndExternalFields = fieldConfigurations
       .filter(
@@ -224,10 +202,6 @@ const UIManager = (sandbox) => {
     });
   };
 
-  /**
-   * 根據選擇的機型，動態產生「風量量測」的格線
-   * @param {string} dryerModel - 乾燥機型號
-   */
   const renderAirVolumeGrid = (dryerModel) => {
     const measurements = getAirVolumeMeasurementsByModel(dryerModel);
     const gridContainer = dom.airVolumeGrid;
@@ -302,9 +276,6 @@ const UIManager = (sandbox) => {
     });
   };
 
-  /**
-   * 產生「技術溫測實溫」的輸入格線
-   */
   const generateTechTempInputs = () => {
     if (!dom.techTempGrid) return;
     dom.techTempGrid.innerHTML = `<div class="record-label">紀錄-每分</div><div class="grid-header">1(右)</div><div class="grid-header">2</div><div class="grid-header">3(中)</div><div class="grid-header">4</div><div class="grid-header">5(左)</div><div class="grid-header">溫差</div>`;
@@ -327,13 +298,9 @@ const UIManager = (sandbox) => {
     });
   };
 
-  /**
-   * 產生「給排氣damper開度」的輸入欄位
-   */
   const generateDamperOpeningInputs = () => {
     if (!dom.damperOpeningGrid) return;
     dom.damperOpeningGrid.innerHTML = "";
-    // 確保這裡的 fieldConfigurations 使用的是當前模組作用域中的變數
     fieldConfigurations = generateFieldConfigurations(currentDryerModel);
     const damperFields = fieldConfigurations.filter(
       (f) => f.group === "damperOpening"
@@ -354,10 +321,6 @@ const UIManager = (sandbox) => {
     });
   };
 
-  /**
-   * 根據機型，產生所有 HMI 相關的區塊與輸入欄位
-   * @param {string} dryerModel - 乾燥機型號
-   */
   const renderHmiSections = (dryerModel) => {
     if (!dom.hmiContainer) return;
     dom.hmiContainer.innerHTML = "";
@@ -395,9 +358,6 @@ const UIManager = (sandbox) => {
     }
   };
 
-  /**
-   * 根據選擇的紀錄類型，切換顯示的表單區塊
-   */
   const toggleSections = () => {
     const selectedType = getCurrentRecordType();
     document.body.classList.toggle(
@@ -416,10 +376,6 @@ const UIManager = (sandbox) => {
     }
   };
 
-  /**
-   * 顯示確認對話框
-   * @param {object} { message, onConfirm, onCancel }
-   */
   const showConfirmModal = ({ message, onConfirm, onCancel }) => {
     if (!dom.confirmModalOverlay) return;
     dom.confirmModalMessage.textContent = message;
@@ -440,10 +396,6 @@ const UIManager = (sandbox) => {
     dom.confirmNoBtn.addEventListener("click", noHandler);
   };
 
-  /**
-   * 顯示圖片燈箱
-   * @param {object} { src, caption }
-   */
   const showImageModal = ({ src, caption }) => {
     if (!dom.imageModalOverlay) return;
     dom.modalImage.src = src;
@@ -451,13 +403,7 @@ const UIManager = (sandbox) => {
     dom.imageModalOverlay.classList.add("visible");
   };
 
-  /**
-   * 驗證單一輸入欄位
-   * @param {HTMLElement} inputElement - 要驗證的輸入框元素
-   * @returns {boolean} - 是否通過驗證
-   */
   const validateInput = (inputElement) => {
-    // 確保這裡的 fieldConfigurations 使用的是當前模組作用域中的變數
     fieldConfigurations = generateFieldConfigurations(currentDryerModel);
     const fieldConfig = fieldConfigurations.find(
       (f) => f.id === inputElement.id
@@ -497,10 +443,6 @@ const UIManager = (sandbox) => {
     return true;
   };
 
-  /**
-   * 切換手風琴區塊的展開/收合
-   * @param {HTMLElement} header - 被點擊的標題元素
-   */
   const toggleAccordion = (header) => {
     header.classList.toggle("active");
     let content = header.nextElementSibling;
@@ -531,10 +473,6 @@ const UIManager = (sandbox) => {
     }
   };
 
-  /**
-   * 處理歷史數據表格中「比較」核取框的選擇
-   * @param {string} recordId - 被點擊的紀錄 ID
-   */
   const handleCompareSelection = (recordId) => {
     const index = selectedToCompareIds.indexOf(recordId);
     if (index > -1) {
@@ -553,12 +491,8 @@ const UIManager = (sandbox) => {
     }
   };
 
-  /**
-   * 根據當前模式，填充篩選器中的數值欄位下拉選單
-   */
   const populateFilterSelect = () => {
     const currentType = getCurrentRecordType();
-    // 確保這裡的 fieldConfigurations 使用的是當前模組作用域中的變數
     fieldConfigurations = generateFieldConfigurations(currentDryerModel);
     const numericFields = fieldConfigurations.filter(
       (f) =>
@@ -579,10 +513,6 @@ const UIManager = (sandbox) => {
     }
   };
 
-  /**
-   * 產生分頁控制按鈕
-   * @param {object} { currentPage, totalPages }
-   */
   const renderPagination = ({ currentPage, totalPages }) => {
     if (!dom.paginationContainer) return;
     dom.paginationContainer.innerHTML = "";
@@ -614,10 +544,6 @@ const UIManager = (sandbox) => {
     dom.paginationContainer.innerHTML = paginationHtml;
   };
 
-  /**
-   * 渲染歷史數據表格
-   * @param {object} { records, editingIndex, sortState, goldenBatchId, pagination }
-   */
   const renderTable = ({
     records,
     editingIndex,
@@ -627,7 +553,6 @@ const UIManager = (sandbox) => {
   }) => {
     try {
       const currentRecordType = getCurrentRecordType();
-      // 確保這裡的 fieldConfigurations 使用的是當前模組作用域中的變數
       fieldConfigurations = generateFieldConfigurations(currentDryerModel);
       const tableHeaderConfigs = fieldConfigurations.filter(
         (f) => f.inTable && f.recordTypes.includes(currentRecordType)
@@ -735,10 +660,6 @@ const UIManager = (sandbox) => {
     }
   };
 
-  /**
-   * 顯示短暫的訊息提示框
-   * @param {object} { text, type }
-   */
   const showMessage = ({ text, type = "info" }) => {
     if (!dom.messageBox) return;
     dom.messageBox.textContent = text;
@@ -746,9 +667,6 @@ const UIManager = (sandbox) => {
     setTimeout(() => dom.messageBox.classList.remove("visible"), 3000);
   };
 
-  /**
-   * 清除表單所有內容，並重設相關狀態
-   */
   const clearForm = () => {
     if (dom.allInputFieldsContainer) {
       const forms = dom.allInputFieldsContainer.querySelectorAll("form");
@@ -788,11 +706,6 @@ const UIManager = (sandbox) => {
     sandbox.publish("form-cleared");
   };
 
-  /**
-   * 將一筆歷史紀錄載入到表單中，用於編輯或預覽
-   * @param {object} record - 要載入的紀錄物件
-   * @param {boolean} isForEdit - 是否為編輯模式
-   */
   const loadDataToForm = (record, isForEdit = false) => {
     clearForm();
     editingRecordId = isForEdit ? record.id : null;
@@ -805,7 +718,6 @@ const UIManager = (sandbox) => {
     if (record.dryerModel) {
       dom.dryerModelSelect.value = record.dryerModel.toLowerCase();
       currentDryerModel = record.dryerModel.toLowerCase();
-      // 在改變機型後，需要重新渲染相關的輸入區域
       renderAirAndExternalInputs(currentDryerModel);
       renderAirVolumeGrid(currentDryerModel);
       generateDamperOpeningInputs();
@@ -813,16 +725,13 @@ const UIManager = (sandbox) => {
       populateFilterSelect();
     }
 
-    // 重新生成 fieldConfigurations 以確保與當前機型匹配
     fieldConfigurations = generateFieldConfigurations(currentDryerModel);
 
     fieldConfigurations.forEach((field) => {
-      // 不處理動態生成的輸入 (air_speed, air_temp, techTemp_X_Y)，因為它們在 renderAirVolumeGrid/generateTechTempInputs 中處理
-      // 也不處理 radio 類型，因為它們單獨處理
       if (
         field.recordTypes.includes(record.recordType) &&
-        !field.isCalculated && // 計算欄位不從輸入框讀取
-        !field.isDynamicInput && // 動態生成的輸入由其各自的渲染邏輯處理
+        !field.isCalculated &&
+        !field.isDynamicInput &&
         field.elemType !== "radio"
       ) {
         const valueToSet = utils.getNestedValue(record, field.dataKey, null);
@@ -833,15 +742,12 @@ const UIManager = (sandbox) => {
       }
     });
 
-    // 特殊處理 radio buttons
-    // RTO 啟用狀態
     if (record.rtoStatus) {
       const rtoRadio = document.getElementById(
         `rto${record.rtoStatus === "yes" ? "Yes" : "No"}`
       );
       if (rtoRadio) rtoRadio.checked = true;
     }
-    // 升溫啟用狀態
     if (record.heatingStatus) {
       const heatingRadio = document.getElementById(
         `heating${record.heatingStatus === "yes" ? "Yes" : "No"}`
@@ -849,7 +755,6 @@ const UIManager = (sandbox) => {
       if (heatingRadio) heatingRadio.checked = true;
     }
 
-    // 載入 airVolume inputs
     const airMeasurements = getAirVolumeMeasurementsByModel(currentDryerModel);
     airMeasurements.forEach((measure) => {
       if (measure.status === "normal") {
@@ -885,7 +790,6 @@ const UIManager = (sandbox) => {
       }
     });
 
-    // 載入 techTemp inputs
     techTempPoints.forEach((point) => {
       const recordPointKey = `point${
         point.id.startsWith("T") ? point.id : parseInt(point.id)
@@ -910,7 +814,6 @@ const UIManager = (sandbox) => {
           diffVal !== null && !isNaN(diffVal) ? diffVal.toFixed(2) : "0.00";
     });
 
-    // 手動觸發即時預覽圖表，因為載入數據後內容已變
     sandbox.publish("request-chart-preview", record);
 
     if (isForEdit) {
@@ -924,10 +827,8 @@ const UIManager = (sandbox) => {
       updateRawDataStatus(true);
       try {
         if (dom.rawCsvTextArea) {
-          // Papa.unparse 期望數據是物件陣列或陣列陣列
-          // results.data 應該已經是物件陣列，可以直接使用
           dom.rawCsvTextArea.value = Papa.unparse(record.rawChartData.data, {
-            columns: record.rawChartData.meta?.fields, // 提供列名確保順序
+            columns: record.rawChartData.meta?.fields,
           });
         }
       } catch (e) {
@@ -938,11 +839,6 @@ const UIManager = (sandbox) => {
     }
   };
 
-  /**
-   * 從表單中收集所有輸入數據，並組合成一個紀錄物件。
-   * **這是之前缺失的函式定義！**
-   * @returns {object} 包含所有表單數據的紀錄物件。
-   */
   const getRecordDataFromForm = () => {
     const record = {
       id: editingRecordId || crypto.randomUUID(),
@@ -955,20 +851,18 @@ const UIManager = (sandbox) => {
       airExternalData: {},
       damperOpeningData: {},
       hmiData: {},
-      rawChartData: tempRawData, // 包含從文字框貼上的原始數據
-      isSynced: false, // 標記為未同步，需要儲存
+      rawChartData: tempRawData,
+      isSynced: false,
     };
 
-    fieldConfigurations = generateFieldConfigurations(currentDryerModel); // 確保最新的配置
+    fieldConfigurations = generateFieldConfigurations(currentDryerModel);
 
-    // 處理基本資訊、Recorder 1 & 2、FAN 設定、Dryer Temp 設定
     fieldConfigurations.forEach((field) => {
-      // 處理除 radio 和動態生成之外的普通輸入
       if (
         !field.isCalculated &&
         !field.isDynamicInput &&
         field.elemType !== "radio" &&
-        field.id !== "recordTypeDisplay" && // 這些是顯示用的，不是輸入
+        field.id !== "recordTypeDisplay" &&
         field.id !== "dryerModelDisplay"
       ) {
         const el = document.getElementById(field.id);
@@ -978,14 +872,13 @@ const UIManager = (sandbox) => {
             const num = parseFloat(value);
             value = isNaN(num) ? null : num;
           } else if (value === "") {
-            value = null; // 將空字串轉換為 null
+            value = null;
           }
           utils.setNestedValue(record, field.dataKey, value);
         }
       }
     });
 
-    // 特殊處理 Radio buttons
     record.rtoStatus = document.getElementById("rtoYes").checked
       ? "yes"
       : document.getElementById("rtoNo").checked
@@ -997,7 +890,6 @@ const UIManager = (sandbox) => {
       ? "no"
       : null;
 
-    // 處理動態生成的 airVolume 和 techTemp 數據
     if (record.recordType === "evaluationTeam") {
       const airMeasurements =
         getAirVolumeMeasurementsByModel(currentDryerModel);
@@ -1007,7 +899,7 @@ const UIManager = (sandbox) => {
           const tempInput = document.getElementById(`air_temp_${measure.id}`);
           const volumeOutput = document.getElementById(
             `air_volume_${measure.id}`
-          ); // 這是計算結果
+          );
 
           record.airVolumes[measure.id] = {
             speed: speedInput
@@ -1028,7 +920,7 @@ const UIManager = (sandbox) => {
             status: measure.status,
           };
         } else {
-          record.airVolumes[measure.id] = { status: measure.status }; // 記錄狀態
+          record.airVolumes[measure.id] = { status: measure.status };
         }
       });
 
@@ -1048,7 +940,6 @@ const UIManager = (sandbox) => {
           record.actualTemps[recordPointKey][`val${i}`] = val;
           if (val !== null) values.push(val);
         }
-        // 計算溫差
         record.actualTemps[recordPointKey].diff =
           values.length > 0
             ? (Math.max(...values) - Math.min(...values)).toFixed(2)
@@ -1056,7 +947,6 @@ const UIManager = (sandbox) => {
       });
     }
 
-    // 處理 Damper 開度 (只在 conditionSetting 模式下有)
     if (record.recordType === "conditionSetting") {
       const damperFields = fieldConfigurations.filter(
         (f) => f.group === "damperOpening"
@@ -1073,7 +963,6 @@ const UIManager = (sandbox) => {
         }
       });
 
-      // 處理 HMI 數據
       const hmiFields = fieldConfigurations.filter((f) => f.isHmiField);
       hmiFields.forEach((field) => {
         const el = document.getElementById(field.id);
@@ -1088,14 +977,13 @@ const UIManager = (sandbox) => {
       });
     }
 
-    // 將 datetime 格式化為 ISO 8601 字串，去除秒和毫秒，例如 "2023-10-26T14:30"
     if (record.dateTime) {
       try {
         const d = new Date(record.dateTime);
         record.dateTime = d.toISOString().slice(0, 16);
       } catch (e) {
         console.warn("日期時間格式化失敗:", record.dateTime, e);
-        record.dateTime = null; // 或者保持原始字串，取決於您的需求
+        record.dateTime = null;
       }
     }
 
@@ -1103,9 +991,6 @@ const UIManager = (sandbox) => {
     return record;
   };
 
-  /**
-   * 訂閱所有來自核心事件中心的事件
-   */
   const subscribeToEvents = () => {
     sandbox.subscribe("raw-data-parsed-for-charting", (payload) => {
       const { results } = payload;
@@ -1201,8 +1086,23 @@ const UIManager = (sandbox) => {
     });
     sandbox.subscribe("request-toggle-accordion", toggleAccordion);
   };
+  
+  // ★★★ 核心修正：將 validateForm 移出 return 物件，成為私有函式 ★★★
+  const validateForm = () => {
+    fieldConfigurations = generateFieldConfigurations(currentDryerModel);
+    let isValid = true;
+    const currentType = getCurrentRecordType(); // 現在可以正確呼叫
+    fieldConfigurations.forEach((field) => {
+      if (field.recordTypes.includes(currentType)) {
+        const el = document.getElementById(field.id);
+        if (el && !el.disabled) {
+          if (!validateInput(el)) isValid = false;
+        }
+      }
+    });
+    return isValid;
+  };
 
-  // --- 公開函式 ---
   return {
     init() {
       console.log("UIManager: 模組初始化完成");
@@ -1222,7 +1122,6 @@ const UIManager = (sandbox) => {
         dom.viewDamperLayoutBtn.dataset.imageSrc = imagePath;
       }
 
-      // 在這裡初始化 fieldConfigurations，確保它們在第一次使用時就可用
       fieldConfigurations = generateFieldConfigurations(currentDryerModel);
 
       renderAirAndExternalInputs(currentDryerModel);
@@ -1252,24 +1151,11 @@ const UIManager = (sandbox) => {
 
     getCurrentRecordType,
     getCurrentDryerModel,
-    getRecordDataFromForm, // 公開這個函式
+    getRecordDataFromForm,
     getDomElements: () => dom,
-
-    validateForm: () => {
-      // 確保這裡的 fieldConfigurations 使用的是當前模組作用域中的變數
-      fieldConfigurations = generateFieldConfigurations(currentDryerModel);
-      let isValid = true;
-      const currentType = getCurrentRecordType();
-      fieldConfigurations.forEach((field) => {
-        if (field.recordTypes.includes(currentType)) {
-          const el = document.getElementById(field.id);
-          if (el && !el.disabled) {
-            if (!validateInput(el)) isValid = false;
-          }
-        }
-      });
-      return isValid;
-    },
+    
+    // ★★★ 核心修正：在 return 物件中引用私有函式 ★★★
+    validateForm: validateForm,
 
     resetFilters: () => {
       if (!dom.filterStartDate) return;

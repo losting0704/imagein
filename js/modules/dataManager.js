@@ -26,17 +26,11 @@ const DataManager = (sandbox) => {
 
     if (storedRecords) {
       try {
-        // 步驟 1: 嘗試解析儲存的數據。這是最可能發生錯誤的地方。
         const parsedData = JSON.parse(storedRecords);
-
-        // 步驟 2: 驗證解析後的資料是否為陣列，若不是也視為資料損毀。
         if (!Array.isArray(parsedData)) {
           throw new Error("儲存的資料格式不正確，並非陣列。");
         }
-
         records = parsedData;
-
-        // 如果解析成功，才繼續處理後續資料整理
         records.forEach((record) => {
           if (!record.id) {
             record.id = crypto.randomUUID();
@@ -45,20 +39,15 @@ const DataManager = (sandbox) => {
         records = records.filter((r) => r && typeof r === "object");
         console.log("DataManager: 已從 Local Storage 載入數據。");
       } catch (parseError) {
-        // 步驟 3: 這個 catch 區塊只會在 JSON.parse() 或格式驗證失敗時執行。
         console.error(
           "DataManager: 解析 Local Storage 數據失敗，資料可能已損毀。",
           parseError
         );
-        records = []; // 將資料重設為安全的空陣列。
-
-        // 透過 sandbox 發布一個使用者可見的錯誤訊息。
+        records = [];
         sandbox.publish("show-message", {
           text: "本地資料損毀，已重設為空白。舊有資料已無法讀取。",
           type: "error",
         });
-
-        // (建議操作) 嘗試移除已損毀的資料，避免下次載入時再次發生錯誤。
         try {
           localStorage.removeItem(LOCAL_STORAGE_KEY);
           console.log("DataManager: 已清除損毀的 Local Storage 數據。");
@@ -67,11 +56,9 @@ const DataManager = (sandbox) => {
         }
       }
     } else {
-      // 如果原本就沒有資料，則初始化為空陣列。
       records = [];
     }
 
-    // 這段程式碼不論載入成功、失敗或無資料，都會執行，以確保 App 其他部分能正常運作。
     try {
       if (ui) {
         const dryerModel = ui.getCurrentDryerModel();
@@ -181,14 +168,6 @@ const DataManager = (sandbox) => {
     const recordType = ui.getCurrentRecordType();
     const dryerModel = ui.getCurrentDryerModel();
 
-    console.log("DataManager: _getFilteredAndSortedRecords called.");
-    console.log(
-      "DataManager: Current UI RecordType:",
-      recordType,
-      "DryerModel:",
-      dryerModel
-    );
-
     let filtered = records.filter(
       (r) => r.recordType === recordType && r.dryerModel === dryerModel
     );
@@ -271,17 +250,6 @@ const DataManager = (sandbox) => {
       });
     }
 
-    if (records.length > 0 && filtered.length === 0) {
-      console.warn(
-        "DataManager: 沒有紀錄符合當前過濾條件。檢查前幾條已儲存紀錄的類型和機型："
-      );
-      records.slice(0, 5).forEach((rec, idx) => {
-        console.log(
-          `Record ${idx}: type=${rec.recordType}, model=${rec.dryerModel}`
-        );
-      });
-    }
-
     return filtered;
   };
 
@@ -314,10 +282,6 @@ const DataManager = (sandbox) => {
       goldenBatchId: goldenBatchId,
       ...overridePayload,
     };
-    console.log(
-      "DataManager: 發布 'data-updated' 事件，數據 payload:",
-      payload
-    );
     sandbox.publish("data-updated", payload);
   };
 
@@ -328,7 +292,6 @@ const DataManager = (sandbox) => {
     if (newPage >= 1 && newPage <= totalPages) {
       currentPage = newPage;
       _publishDataUpdate();
-      console.log(`DataManager: 切換到第 ${newPage} 頁。`);
     }
   };
 
@@ -340,7 +303,6 @@ const DataManager = (sandbox) => {
       text: `黃金樣板已${goldenBatchId ? "設定" : "取消"}。`,
       type: "success",
     });
-    console.log(`DataManager: 黃金樣板 ID 已設定為 ${goldenBatchId}`);
   };
 
   const _analyzeManualComparison = (recordIds) => {
@@ -361,7 +323,6 @@ const DataManager = (sandbox) => {
     }
     const analysisResult = _performComparison(record1, record2);
     _publishDataUpdate({ comparisonAnalysis: analysisResult });
-    console.log("DataManager: 已完成數據比較分析。");
   };
 
   const _performComparison = (recordA, recordB) => {
@@ -484,7 +445,6 @@ const DataManager = (sandbox) => {
 
   const _clearCompareChart = () => {
     _publishDataUpdate({ comparisonAnalysis: null });
-    console.log("DataManager: 已清除比較圖表數據。");
   };
 
   const _addRecord = (newRecord) => {
@@ -497,7 +457,6 @@ const DataManager = (sandbox) => {
       type: "success",
     });
     sandbox.publish("action-completed-clear-form");
-    console.log("DataManager: 新紀錄已新增。");
   };
 
   const _updateRecord = (updatedRecord) => {
@@ -511,15 +470,11 @@ const DataManager = (sandbox) => {
         text: "數據已成功更新！",
         type: "success",
       });
-      console.log(`DataManager: 紀錄 ID ${updatedRecord.id} 已更新。`);
     } else {
       sandbox.publish("show-message", {
         text: "要更新的紀錄不存在。",
         type: "error",
       });
-      console.warn(
-        `DataManager: 無法找到紀錄 ID ${updatedRecord.id} 進行更新。`
-      );
     }
   };
 
@@ -534,13 +489,11 @@ const DataManager = (sandbox) => {
       _saveRecordsToLocalStorage();
       _publishDataUpdate();
       sandbox.publish("show-message", { text: "紀錄已刪除。", type: "info" });
-      console.log(`DataManager: 紀錄 ID ${recordId} 已刪除。`);
     } else {
       sandbox.publish("show-message", {
         text: "要刪除的紀錄不存在。",
         type: "error",
       });
-      console.warn(`DataManager: 無法找到紀錄 ID ${recordId} 進行刪除。`);
     }
   };
 
@@ -550,13 +503,11 @@ const DataManager = (sandbox) => {
       editingIndex = globalIndex;
       sandbox.publish("load-data-to-form-for-edit", records[globalIndex]);
       _publishDataUpdate();
-      console.log(`DataManager: 載入紀錄 ID ${recordId} 進行編輯。`);
     } else {
       sandbox.publish("show-message", {
         text: "要編輯的紀錄不存在。",
         type: "error",
       });
-      console.warn(`DataManager: 無法找到紀錄 ID ${recordId} 進行編輯。`);
     }
   };
 
@@ -564,7 +515,6 @@ const DataManager = (sandbox) => {
     editingIndex = -1;
     _publishDataUpdate();
     sandbox.publish("action-completed-clear-form");
-    console.log("DataManager: 編輯模式已取消。");
   };
 
   const _clearAllData = () => {
@@ -575,14 +525,12 @@ const DataManager = (sandbox) => {
     _saveGoldenBatchIdToLocalStorage();
     _publishDataUpdate();
     sandbox.publish("show-message", { text: "所有數據已清除。", type: "info" });
-    console.log("DataManager: 所有數據已清除。");
   };
 
   const _handleApplyFilters = (filters) => {
     filterState = filters;
     currentPage = 1;
     _publishDataUpdate();
-    console.log("DataManager: 已應用篩選器，新的篩選狀態:", filterState);
   };
 
   const _handleSort = (key) => {
@@ -594,7 +542,6 @@ const DataManager = (sandbox) => {
     }
     currentPage = 1;
     _publishDataUpdate();
-    console.log("DataManager: 已應用排序，新的排序狀態:", sortState);
   };
 
   const _replaceAllData = (newRecords) => {
@@ -603,7 +550,6 @@ const DataManager = (sandbox) => {
         text: "載入失敗：檔案格式不正確。",
         type: "error",
       });
-      console.error("DataManager: 嘗試取代數據但傳入的不是陣列。", newRecords);
       return;
     }
 
@@ -632,22 +578,23 @@ const DataManager = (sandbox) => {
         recordType: firstRecord.recordType,
         dryerModel: firstRecord.dryerModel,
       });
-      console.log(
-        "DataManager: Replacing all data. Requesting UI view switch to:",
-        firstRecord.recordType,
-        firstRecord.dryerModel
-      );
     } else {
       _publishDataUpdate();
-      console.log(
-        "DataManager: Replacing all data with an empty set. Refreshing UI."
-      );
     }
 
     sandbox.publish("show-message", {
       text: `主資料庫載入成功！共 ${records.length} 筆紀錄。`,
       type: "success",
     });
+  };
+
+  // ★★★ 新增：取得今日新增紀錄的函式 ★★★
+  const _getDailyRecords = () => {
+    const today = new Date().toISOString().slice(0, 10);
+    // 篩選出今天建立且尚未同步的紀錄
+    return records.filter(
+      (r) => r.dateTime && r.dateTime.startsWith(today) && !r.isSynced
+    );
   };
 
   return {
@@ -691,10 +638,13 @@ const DataManager = (sandbox) => {
       sandbox.subscribe("request-compare-records", _analyzeManualComparison);
       sandbox.subscribe("request-clear-compare-chart", _clearCompareChart);
       sandbox.subscribe("request-manual-data-update", _publishDataUpdate);
+
       sandbox.subscribe("request-view-raw-data", (recordId) => {
         const record = records.find((r) => r.id === recordId);
         if (record && record.rawChartData) {
-          sandbox.publish("plot-raw-data-chart", record.rawChartData);
+          sandbox.publish("plot-raw-data-chart", {
+            results: record.rawChartData,
+          });
           sandbox.publish("show-message", {
             text: "原始數據圖已載入。",
             type: "info",
@@ -706,6 +656,7 @@ const DataManager = (sandbox) => {
           });
         }
       });
+
       sandbox.subscribe("request-replace-all-data", (data) =>
         _replaceAllData(data.records)
       );
@@ -713,6 +664,13 @@ const DataManager = (sandbox) => {
         "request-merge-imported-records",
         _mergeImportedRecords
       );
+
+      // ★★★ 新增：監聽來自 eventHandler 的請求 ★★★
+      sandbox.subscribe("request-daily-records-for-export", () => {
+        const dailyRecords = _getDailyRecords();
+        // 將今日紀錄發布出去，讓 csvHandler 接收
+        sandbox.publish("request-export-daily-json", { dailyRecords });
+      });
 
       _publishDataUpdate();
       console.log("DataManager: 模組初始化完成。");

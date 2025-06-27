@@ -11,6 +11,7 @@
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <link rel="stylesheet" href="./css/style.css" />
   </head>
 
@@ -1119,21 +1120,6 @@
           ><span>匯入 CSV</span>
         </button>
 
-        <button id="exportChartBtn" class="button button-info">
-          <svg
-            class="icon"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-            fill="none"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line></svg
-          ><span>匯出技術溫測圖</span>
-        </button>
         <button
           id="clearDataBtn"
           class="button button-clear button-clear-special"
@@ -1288,12 +1274,32 @@
           </div>
 
           <div class="button-group" style="margin-top: 15px; margin-bottom: 0">
-            <button id="exportAirVolumeChartBtn" class="button button-info">
-              匯出風量比較圖 (PNG)
-            </button>
-            <button id="exportTempCompareChartBtn" class="button button-info">
-              匯出溫度比較圖 (PNG)
-            </button>
+            <div class="export-option-group">
+              <button id="exportAirVolumeChartBtn" class="button button-info">
+                匯出風量比較圖 (PNG)
+              </button>
+              <div class="export-checkbox-wrapper">
+                <input
+                  type="checkbox"
+                  id="includeLegend_air"
+                  class="styled-checkbox"
+                />
+                <label for="includeLegend_air">包含圖例</label>
+              </div>
+            </div>
+            <div class="export-option-group">
+              <button id="exportTempCompareChartBtn" class="button button-info">
+                匯出溫度比較圖 (PNG)
+              </button>
+              <div class="export-checkbox-wrapper">
+                <input
+                  type="checkbox"
+                  id="includeLegend_compare"
+                  class="styled-checkbox"
+                />
+                <label for="includeLegend_compare">包含圖例</label>
+              </div>
+            </div>
           </div>
         </div>
         <div class="table-container">
@@ -1309,12 +1315,47 @@
         </div>
         <div id="paginationContainer" class="pagination-container"></div>
       </div>
+
       <div class="chart-container">
         <h2>技術溫測實溫分佈圖</h2>
-        <canvas id="temperatureChart"></canvas>
+        <div id="temperatureChartWrapper">
+            <canvas id="temperatureChart"></canvas>
+        </div>
+        <div class="export-option-group" style="margin-top: 15px">
+          <div class="export-checkbox-wrapper">
+            <input
+              type="checkbox"
+              id="toggleDataLabelsBtn"
+              class="styled-checkbox"
+            />
+            <label for="toggleDataLabelsBtn">在圖上顯示數據</label>
+          </div>
+          <button id="exportChartBtn" class="button button-info">
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+              fill="none"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line></svg
+            ><span>匯出技術溫測圖</span>
+          </button>
+          <div class="export-checkbox-wrapper">
+            <input
+              type="checkbox"
+              id="includeLegend_tech"
+              class="styled-checkbox"
+            />
+            <label for="includeLegend_tech">包含圖例</label>
+          </div>
+        </div>
       </div>
 
-      <!-- ▼▼▼【核心修改】此區塊現在只負責顯示圖表和匯出按鈕 ▼▼▼ -->
       <div class="raw-data-chart-section">
         <h2>貼上原始溫測數據 (CSV)</h2>
         <p>
@@ -1355,28 +1396,38 @@
         <div id="rawTemperatureChartContainer">
           <canvas id="rawTemperatureChart"></canvas>
         </div>
-        <button
-          id="exportRawChartButton"
-          class="button button-raw-data"
-          disabled
-        >
-          <svg
-            class="icon"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            stroke-width="2"
-            fill="none"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+
+        <div class="export-option-group">
+          <button
+            id="exportRawChartButton"
+            class="button button-raw-data"
+            disabled
           >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>匯出原始圖表 (PNG)</span>
-        </button>
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+              fill="none"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>匯出原始圖表 (PNG)</span>
+          </button>
+          <div class="export-checkbox-wrapper">
+            <input
+              type="checkbox"
+              id="includeLegend_raw"
+              class="styled-checkbox"
+            />
+            <label for="includeLegend_raw">包含圖例</label>
+          </div>
+        </div>
       </div>
-      <!-- ▲▲▲ 修改結束 ▲▲▲ -->
     </div>
 
     <div id="confirmModalOverlay" class="modal-overlay">
@@ -1406,7 +1457,6 @@
     <!-- 集中管理所有隱藏的檔案輸入框 -->
     <div style="display: none">
       <input type="file" id="csvFileInput" accept=".csv" />
-      <!-- rawCsvFileInput 已被 textarea 取代 -->
       <input
         type="file"
         id="historyCsvInputForMasterCreation"
