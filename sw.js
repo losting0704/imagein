@@ -1,7 +1,7 @@
 // /js/sw.js (最終清理版)
 
 // ★★★ 如果未來有修改，請記得提升版本號，例如 v14 ★★★
-const CACHE_NAME = "dryer-logger-cache-v28";
+const CACHE_NAME = "dryer-logger-cache-v33";
 
 // 核心檔案 (請勿修改此列表)
 const CORE_FILES = [

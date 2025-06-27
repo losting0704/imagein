@@ -1,18 +1,11 @@
-// /js/modules/csvHandler.js (完整註釋版)
+// /js/modules/csvHandler.js (完整匯出邏輯)
 
 import { generateFieldConfigurations } from "./config.js";
 import * as utils from "./utils.js";
 
-// CsvHandler 模組：負責所有與 CSV 和 JSON 檔案的讀取、解析、匯出相關的操作
 const CsvHandler = (sandbox) => {
-  // --- 模組私有變數 ---
-  let ui; // 用於儲存 uiManager 模組的實例
+  let ui;
 
-  /**
-   * 將 Papa.parse 解析後的資料列陣列，轉換為應用程式內部使用的紀錄物件陣列。
-   * @param {Array<Object>} rows - 從 CSV 解析出來的資料列陣列。
-   * @returns {Array<Object>} 轉換後的紀錄物件陣列。
-   */
   const _parseCsvRowsToRecords = (rows) => {
     const importedRecords = [];
     const supportedModels = ["vt1", "vt5", "vt6", "vt7", "vt8"];
@@ -108,10 +101,6 @@ const CsvHandler = (sandbox) => {
     return importedRecords;
   };
 
-  /**
-   * 處理來自文字區塊的 Raw Data。
-   * @param {Object} { text } - 包含貼上文字的物件。
-   */
   const _handleRawTextImport = ({ text }) => {
     if (!text || !text.trim()) {
       sandbox.publish("show-message", {
@@ -126,12 +115,9 @@ const CsvHandler = (sandbox) => {
       header: true,
       dynamicTyping: true,
       skipEmptyLines: true,
-      // ▼▼▼【新增】transform 函式 ▼▼▼
       transform: function (value) {
-        // 如果欄位的值是空字串，就回傳 null，否則回傳原值
         return value.trim() === "" ? null : value;
       },
-      // ▲▲▲【新增】完成 ▲▲▲
       complete: (results) => {
         sandbox.publish("hide-loader");
         if (results.errors.length) {
@@ -154,12 +140,6 @@ const CsvHandler = (sandbox) => {
     });
   };
 
-  /**
-   * 觸發瀏覽器下載檔案的輔助函式。
-   * @param {string} content - 檔案內容。
-   * @param {string} filename - 下載的檔名。
-   * @param {string} mimeType - 檔案的 MIME 類型。
-   */
   const _triggerDownload = (content, filename, mimeType) => {
     try {
       const blob = new Blob([content], { type: mimeType });
@@ -180,10 +160,6 @@ const CsvHandler = (sandbox) => {
     }
   };
 
-  /**
-   * 匯出當前顯示在歷史紀錄表格中的數據為 CSV 檔案。
-   * @param {object} { records } - 要匯出的紀錄陣列。
-   */
   const _exportMainCsv = ({ records }) => {
     if (!records || records.length === 0) {
       sandbox.publish("show-message", {
@@ -256,10 +232,6 @@ const CsvHandler = (sandbox) => {
     }
   };
 
-  /**
-   * 處理從檔案選擇器匯入歷史紀錄 CSV 的流程。
-   * @param {object} { file } - 使用者選擇的檔案物件。
-   */
   const _handleImportCsvRecords = ({ file }) => {
     if (!file) return;
     sandbox.publish("show-loader");
@@ -298,29 +270,21 @@ const CsvHandler = (sandbox) => {
     });
   };
 
-  /**
-   * 輔助函式，用於彈出檔案選擇對話框。
-   * @param {HTMLElement} inputElement - 隱藏的 <input type="file"> 元素。
-   * @param {Function} callback - 使用者選擇檔案後要執行的回呼函式。
-   */
   const _promptForFiles = (inputElement, callback) => {
     inputElement.onchange = (event) => {
       if (event.target.files && event.target.files.length > 0) {
         callback(event.target.files);
       }
-      inputElement.onchange = null; // 避免重複觸發
-      inputElement.value = ""; // 清空選擇，以便下次能選擇同一個檔案
+      inputElement.onchange = null;
+      inputElement.value = "";
     };
     inputElement.click();
   };
 
-  /**
-   * 啟動「載入主資料庫」的流程。
-   */
   const _startLoadMasterDbFlow = () => {
     const dom = ui.getDomElements();
     sandbox.publish("show-message", {
-      text: "請選擇要載入的主資料庫檔案 (all_records.json)",
+      text: "請先選擇您的「主資料庫檔案 (all_records.json)」",
       type: "info",
     });
     _promptForFiles(dom.masterJsonInput, (files) => {
@@ -344,9 +308,6 @@ const CsvHandler = (sandbox) => {
     });
   };
 
-  /**
-   * 啟動「從歷史 CSV 建立主資料庫」的流程。
-   */
   const _startCreateMasterDbFlow = () => {
     const dom = ui.getDomElements();
     _promptForFiles(dom.historyCsvInput, (files) => {
@@ -354,10 +315,6 @@ const CsvHandler = (sandbox) => {
     });
   };
 
-  /**
-   * 處理多個歷史 CSV 檔案，將它們合併成一個主資料庫 JSON 檔案。
-   * @param {FileList} files - 使用者選擇的多個檔案。
-   */
   const _handleCreateMasterDb = (files) => {
     if (!files || files.length === 0) return;
     sandbox.publish("show-message", {
@@ -421,37 +378,28 @@ const CsvHandler = (sandbox) => {
       });
   };
 
-  /**
-   * 匯出本日新增的紀錄為 JSON 檔案。
-   * @param {object} { dailyRecords } - 當天新增的紀錄陣列。
-   */
-  const _createDailyJsonFile = ({ dailyRecords }) => {
-    if (!dailyRecords || dailyRecords.length === 0) {
+  const _createFullDatabaseFile = ({ recordsToExport }) => {
+    if (!recordsToExport || recordsToExport.length === 0) {
       sandbox.publish("show-message", {
-        text: "今日無新增紀錄可匯出。",
+        text: "目前沒有任何資料可匯出。",
         type: "info",
       });
       return;
     }
-    const jsonContent = JSON.stringify(dailyRecords, null, 2);
-    const date = new Date().toISOString().slice(0, 10);
-    _triggerDownload(
-      jsonContent,
-      `tablet-data-${date}.json`,
-      "application/json;charset=utf-8;"
-    );
-    sandbox.publish("records-successfully-exported", {
-      ids: dailyRecords.map((r) => r.id),
-    });
+    const jsonContent = JSON.stringify(recordsToExport, null, 2);
+    const dryerModel = ui.getCurrentDryerModel();
+    const timestamp = new Date()
+      .toISOString()
+      .slice(0, 19)
+      .replace(/[-:T]/g, "");
+    const filename = `full_backup_${dryerModel}_${timestamp}.json`;
+    _triggerDownload(jsonContent, filename, "application/json;charset=utf-8;");
     sandbox.publish("show-message", {
-      text: `本日新紀錄 (${dailyRecords.length} 筆) 已匯出。`,
+      text: `完整資料庫 (${recordsToExport.length} 筆紀錄) 已成功匯出！`,
       type: "success",
     });
   };
 
-  /**
-   * 啟動「合併資料至主資料庫」的流程。
-   */
   const _handleMergeStart = () => {
     const dom = ui.getDomElements();
     sandbox.publish("show-message", {
@@ -489,10 +437,6 @@ const CsvHandler = (sandbox) => {
     });
   };
 
-  /**
-   * 接收合併後的最終紀錄，並觸發下載。
-   * @param {object} { finalRecords } - 合併並排序後的完整紀錄陣列。
-   */
   const _createNewMasterFile = ({ finalRecords }) => {
     const jsonContent = JSON.stringify(finalRecords, null, 2);
     _triggerDownload(
@@ -506,9 +450,6 @@ const CsvHandler = (sandbox) => {
     });
   };
 
-  /**
-   * 啟動「匯出 Power BI 專用 CSV」的流程。
-   */
   const _exportAllForPowerBI = () => {
     const dom = ui.getDomElements();
     sandbox.publish("show-message", {
@@ -578,7 +519,6 @@ const CsvHandler = (sandbox) => {
     });
   };
 
-  // --- 模組的初始化函式 ---
   return {
     init: () => {
       ui = sandbox.getModule("uiManager");
@@ -588,7 +528,6 @@ const CsvHandler = (sandbox) => {
       }
       console.log("CsvHandler: 模組初始化完成");
 
-      // --- 訂閱來自核心的事件 ---
       sandbox.subscribe("request-parse-raw-text", _handleRawTextImport);
       sandbox.subscribe("request-export-main-csv", _exportMainCsv);
       sandbox.subscribe("request-import-csv-records", _handleImportCsvRecords);
@@ -597,7 +536,12 @@ const CsvHandler = (sandbox) => {
         "request-create-master-db-start",
         _startCreateMasterDbFlow
       );
-      sandbox.subscribe("request-export-daily-json", _createDailyJsonFile);
+
+      sandbox.subscribe(
+        "request-export-all-records-json",
+        _createFullDatabaseFile
+      );
+
       sandbox.subscribe("request-merge-start", _handleMergeStart);
       sandbox.subscribe("request-create-new-master-file", _createNewMasterFile);
       sandbox.subscribe("request-export-all-for-powerbi", _exportAllForPowerBI);

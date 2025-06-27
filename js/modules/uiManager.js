@@ -1,4 +1,4 @@
-// /js/modules/uiManager.js (圖片燈箱修正版)
+// /js/modules/uiManager.js (Raw Data 編輯功能版)
 
 import {
   generateFieldConfigurations,
@@ -11,7 +11,6 @@ import {
 import * as utils from "./utils.js";
 
 const UIManager = (sandbox) => {
-  // --- 模組私有變數 ---
   const dom = {};
   let currentDryerModel = "vt8";
   let fieldConfigurations = [];
@@ -115,6 +114,34 @@ const UIManager = (sandbox) => {
         if (dom.rawCsvTextArea) dom.rawCsvTextArea.value = "";
       }
     }
+  };
+
+  // ▼▼▼【新增】一個統一處理 Raw Data 顯示的函式 ▼▼▼
+  const _displayRawData = (rawChartData, isReadOnly) => {
+    if (!dom.rawCsvTextArea) return;
+
+    if (rawChartData && rawChartData.data) {
+      try {
+        const text = Papa.unparse(rawChartData.data, {
+          columns: rawChartData.meta?.fields,
+        });
+        dom.rawCsvTextArea.value = text;
+        tempRawData = rawChartData; // 將暫存數據與顯示內容同步
+        updateRawDataStatus(true);
+      } catch (e) {
+        console.error("還原 Raw Data 文字時失敗:", e);
+        dom.rawCsvTextArea.value = "無法還原此筆紀錄的原始文字。";
+        tempRawData = null;
+        updateRawDataStatus(false);
+      }
+    } else {
+      dom.rawCsvTextArea.value = "";
+      tempRawData = null;
+      updateRawDataStatus(false);
+    }
+
+    dom.rawCsvTextArea.readOnly = isReadOnly;
+    dom.rawCsvTextArea.style.backgroundColor = isReadOnly ? "#f0f0f0" : "";
   };
 
   const setDateTimeToNow = () => {
@@ -695,12 +722,7 @@ const UIManager = (sandbox) => {
     if (dom.cancelEditBtn) dom.cancelEditBtn.style.display = "none";
     if (dom.saveDataBtn) dom.saveDataBtn.style.display = "inline-flex";
 
-    if (dom.rawCsvTextArea) {
-      dom.rawCsvTextArea.readOnly = false;
-      dom.rawCsvTextArea.style.backgroundColor = "";
-    }
-    tempRawData = null;
-    updateRawDataStatus(false);
+    _displayRawData(null, false);
 
     editingRecordId = null;
     sandbox.publish("form-cleared");
@@ -820,22 +842,6 @@ const UIManager = (sandbox) => {
       dom.updateDataBtn.style.display = "inline-flex";
       dom.cancelEditBtn.style.display = "inline-flex";
       dom.saveDataBtn.style.display = "none";
-    }
-
-    if (record.rawChartData && record.rawChartData.data) {
-      tempRawData = record.rawChartData;
-      updateRawDataStatus(true);
-      try {
-        if (dom.rawCsvTextArea) {
-          dom.rawCsvTextArea.value = Papa.unparse(record.rawChartData.data, {
-            columns: record.rawChartData.meta?.fields,
-          });
-        }
-      } catch (e) {
-        console.error("將 rawChartData 轉回 CSV 字串時失敗:", e);
-      }
-
-      sandbox.publish("uiReadyForRawChart", { results: record.rawChartData });
     }
   };
 
@@ -1085,6 +1091,17 @@ const UIManager = (sandbox) => {
       if (dom.loadingOverlay) dom.loadingOverlay.classList.remove("visible");
     });
     sandbox.subscribe("request-toggle-accordion", toggleAccordion);
+
+    // ▼▼▼【新增】訂閱顯示歷史 Raw Data 文字的事件 ▼▼▼
+    sandbox.subscribe(
+      "display-historical-raw-text",
+      (payload) => _displayRawData(payload.rawChartData, true) // isReadOnly = true
+    );
+    sandbox.subscribe(
+      "load-raw-data-for-editing",
+      (payload) => _displayRawData(payload.rawChartData, false) // isReadOnly = false
+    );
+    // ▲▲▲【新增】完成 ▲▲▲
   };
 
   const validateForm = () => {
@@ -1107,7 +1124,7 @@ const UIManager = (sandbox) => {
       console.log("UIManager: 模組初始化完成");
       cacheDom();
 
-      // ▼▼▼【修正】將關閉函式移入 init 內部以確保作用域正確 ▼▼▼
+      // ▼▼▼【修改】將關閉函式移入 init 內部以確保作用域正確 ▼▼▼
       const _hideImageModal = () => {
         if (dom.imageModalOverlay) {
           dom.imageModalOverlay.classList.remove("visible");
@@ -1124,7 +1141,7 @@ const UIManager = (sandbox) => {
           }
         });
       }
-      // ▲▲▲【修正】完成 ▲▲▲
+      // ▲▲▲【修改】完成 ▲▲▲
 
       const dryerModelOrder = ["vt1", "vt5", "vt6", "vt7", "vt8"];
       dom.dryerModelSelect.innerHTML = dryerModelOrder

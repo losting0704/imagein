@@ -1,4 +1,4 @@
-// /js/modules/dataManager.js (編輯防呆與動態標題修正版)
+// /js/modules/dataManager.js (Raw Data 編輯修正版)
 
 import {
   LOCAL_STORAGE_KEY,
@@ -17,10 +17,6 @@ const DataManager = (sandbox) => {
   let currentPage = 1;
   const ITEMS_PER_PAGE = 20;
 
-  /**
-   * 從 Local Storage 載入數據。
-   * 這個版本經過強化，可以處理資料損毀的情況。
-   */
   const _loadDataFromLocalStorage = () => {
     const storedRecords = localStorage.getItem(LOCAL_STORAGE_KEY);
 
@@ -70,9 +66,6 @@ const DataManager = (sandbox) => {
     }
   };
 
-  /**
-   * 將當前記憶體中的數據儲存到 Local Storage。
-   */
   const _saveRecordsToLocalStorage = () => {
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(records));
@@ -497,28 +490,24 @@ const DataManager = (sandbox) => {
     }
   };
 
-  // ▼▼▼【最終修正】解決編輯模式下圖表標題不更新的問題 ▼▼▼
   const _loadRecordForEdit = (recordId) => {
     const globalIndex = records.findIndex((r) => r.id === recordId);
     if (globalIndex !== -1) {
       editingIndex = globalIndex;
       const recordToEdit = records[globalIndex];
 
-      // 這個事件會觸發 UI 更新，其中包含一個會覆蓋圖表的事件
       sandbox.publish("load-data-to-form-for-edit", recordToEdit);
 
-      // 如果有 Raw Data，我們使用 setTimeout 來確保我們的圖表更新事件
-      // 在 UI 更新完成後才執行，從而正確設定標題。
       if (recordToEdit.rawChartData) {
         setTimeout(() => {
           sandbox.publish("plot-raw-data-chart", {
             results: recordToEdit.rawChartData,
             recordInfo: { dateTime: recordToEdit.dateTime },
           });
-          sandbox.publish("display-historical-raw-text", {
+          sandbox.publish("load-raw-data-for-editing", {
             rawChartData: recordToEdit.rawChartData,
           });
-        }, 0); // timeout 設為 0，會將其推到事件佇列的末尾執行
+        }, 0);
       }
 
       _publishDataUpdate();
@@ -529,7 +518,6 @@ const DataManager = (sandbox) => {
       });
     }
   };
-  // ▲▲▲【最終修正】完成 ▲▲▲
 
   const _cancelEdit = () => {
     editingIndex = -1;
@@ -579,13 +567,16 @@ const DataManager = (sandbox) => {
       if (typeof r.dryerModel === "string") {
         r.dryerModel = r.dryerModel.toLowerCase();
       }
+
       if (typeof r.recordType === "string") {
-        if (r.recordType === "評價TEAM用") {
+        const typeStr = r.recordType.toLowerCase();
+        if (typeStr.includes("評價") || typeStr.includes("evaluation")) {
           r.recordType = "evaluationTeam";
-        } else if (r.recordType === "條件設定用") {
+        } else if (
+          typeStr.includes("條件設定") ||
+          typeStr.includes("condition")
+        ) {
           r.recordType = "conditionSetting";
-        } else {
-          r.recordType = r.recordType.toLowerCase();
         }
       }
     });
@@ -608,11 +599,10 @@ const DataManager = (sandbox) => {
     });
   };
 
-  const _getDailyRecords = () => {
-    const today = new Date().toISOString().slice(0, 10);
-    return records.filter(
-      (r) => r.dateTime && r.dateTime.startsWith(today) && !r.isSynced
-    );
+  // ▼▼▼【修改】這個函式現在會回傳所有紀錄 ▼▼▼
+  const _getRecordsForExport = () => {
+    // 直接回傳記憶體中所有的紀錄
+    return records;
   };
 
   return {
@@ -632,10 +622,16 @@ const DataManager = (sandbox) => {
 
       sandbox.subscribe("request-change-page", _changePage);
       sandbox.subscribe("request-set-golden-batch", _setGoldenBatch);
+
       sandbox.subscribe("request-change-dryer-model", () => {
         currentPage = 1;
-        _publishDataUpdate();
+        setTimeout(() => _publishDataUpdate(), 0);
       });
+      sandbox.subscribe("request-record-type-change", () => {
+        currentPage = 1;
+        setTimeout(() => _publishDataUpdate(), 0);
+      });
+
       sandbox.subscribe("request-save-data", _addRecord);
       sandbox.subscribe("request-update-data", _updateRecord);
       sandbox.subscribe("request-delete-data", _deleteRecord);
@@ -647,22 +643,24 @@ const DataManager = (sandbox) => {
           records: _getFilteredAndSortedRecords(),
         });
       });
-      sandbox.subscribe("request-record-type-change", () => {
-        currentPage = 1;
-        _publishDataUpdate();
-      });
+
       sandbox.subscribe("request-apply-filters", _handleApplyFilters);
       sandbox.subscribe("request-sort-history", _handleSort);
       sandbox.subscribe("request-compare-records", _analyzeManualComparison);
       sandbox.subscribe("request-clear-compare-chart", _clearCompareChart);
       sandbox.subscribe("request-manual-data-update", _publishDataUpdate);
 
+      // ▼▼▼【修改】當查看歷史 Raw Data 時，把時間資訊也一起傳過去 ▼▼▼
       sandbox.subscribe("request-view-raw-data", (recordId) => {
         const record = records.find((r) => r.id === recordId);
         if (record && record.rawChartData) {
           sandbox.publish("plot-raw-data-chart", {
             results: record.rawChartData,
-            recordInfo: { dateTime: record.dateTime },
+            recordInfo: { dateTime: record.dateTime }, // 傳遞紀錄時間
+          });
+          // ▼▼▼【新增】發布事件以顯示唯讀的 Raw Data 文字 ▼▼▼
+          sandbox.publish("display-historical-raw-text", {
+            rawChartData: record.rawChartData,
           });
           sandbox.publish("show-message", {
             text: "原始數據圖已載入。",
@@ -675,6 +673,7 @@ const DataManager = (sandbox) => {
           });
         }
       });
+      // ▲▲▲【修改】完成 ▲▲▲
 
       sandbox.subscribe("request-replace-all-data", (data) =>
         _replaceAllData(data.records)
@@ -684,10 +683,14 @@ const DataManager = (sandbox) => {
         _mergeImportedRecords
       );
 
+      // ▼▼▼【修改】讓這個事件請求所有紀錄，而不是只有當日紀錄 ▼▼▼
       sandbox.subscribe("request-daily-records-for-export", () => {
-        const dailyRecords = _getDailyRecords();
-        sandbox.publish("request-export-daily-json", { dailyRecords });
+        const allRecords = _getRecordsForExport();
+        sandbox.publish("request-export-all-records-json", {
+          recordsToExport: allRecords,
+        });
       });
+      // ▲▲▲【修改】完成 ▲▲▲
 
       _publishDataUpdate();
       console.log("DataManager: 模組初始化完成。");
