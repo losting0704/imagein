@@ -1278,27 +1278,11 @@
               <button id="exportAirVolumeChartBtn" class="button button-info">
                 匯出風量比較圖 (PNG)
               </button>
-              <div class="export-checkbox-wrapper">
-                <input
-                  type="checkbox"
-                  id="includeLegend_air"
-                  class="styled-checkbox"
-                />
-                <label for="includeLegend_air">包含圖例</label>
-              </div>
             </div>
             <div class="export-option-group">
               <button id="exportTempCompareChartBtn" class="button button-info">
                 匯出溫度比較圖 (PNG)
               </button>
-              <div class="export-checkbox-wrapper">
-                <input
-                  type="checkbox"
-                  id="includeLegend_compare"
-                  class="styled-checkbox"
-                />
-                <label for="includeLegend_compare">包含圖例</label>
-              </div>
             </div>
           </div>
         </div>
@@ -1319,7 +1303,7 @@
       <div class="chart-container">
         <h2>技術溫測實溫分佈圖</h2>
         <div id="temperatureChartWrapper">
-            <canvas id="temperatureChart"></canvas>
+          <canvas id="temperatureChart"></canvas>
         </div>
         <div class="export-option-group" style="margin-top: 15px">
           <div class="export-checkbox-wrapper">
@@ -1328,7 +1312,7 @@
               id="toggleDataLabelsBtn"
               class="styled-checkbox"
             />
-            <label for="toggleDataLabelsBtn">在圖上顯示數據</label>
+            <label for="toggleDataLabelsBtn">在圖上顯示標籤</label>
           </div>
           <button id="exportChartBtn" class="button button-info">
             <svg
@@ -1345,14 +1329,6 @@
               <line x1="12" y1="15" x2="12" y2="3"></line></svg
             ><span>匯出技術溫測圖</span>
           </button>
-          <div class="export-checkbox-wrapper">
-            <input
-              type="checkbox"
-              id="includeLegend_tech"
-              class="styled-checkbox"
-            />
-            <label for="includeLegend_tech">包含圖例</label>
-          </div>
         </div>
       </div>
 
@@ -1418,14 +1394,6 @@
             </svg>
             <span>匯出原始圖表 (PNG)</span>
           </button>
-          <div class="export-checkbox-wrapper">
-            <input
-              type="checkbox"
-              id="includeLegend_raw"
-              class="styled-checkbox"
-            />
-            <label for="includeLegend_raw">包含圖例</label>
-          </div>
         </div>
       </div>
     </div>

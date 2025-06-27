@@ -1,4 +1,4 @@
-// /js/modules/chartManager.js (圖例恆定顯示版)
+// /js/modules/chartManager.js (圖例恆定顯示版 & Raw Chart 標籤預設關閉版)
 
 import { techTempPoints } from "./config.js";
 import * as utils from "./utils.js";
@@ -684,6 +684,11 @@ const ChartManager = (sandbox) => {
               },
             },
           },
+          // ▼▼▼【最終修正】在此處新增這個區塊 ▼▼▼
+          datalabels: {
+            display: false // 預設關閉這個圖表的數據標籤
+          }
+          // ▲▲▲【最終修正】在此處新增這個區塊 ▲▲▲
         },
         scales: {
           x: {

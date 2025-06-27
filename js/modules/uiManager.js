@@ -98,10 +98,6 @@ const UIManager = (sandbox) => {
       exportForPowerBIBtn: D("exportForPowerBIBtn"),
       exportDailyJsonBtn: D("exportDailyJsonBtn"),
       toggleDataLabelsBtn: D("toggleDataLabelsBtn"),
-      includeLegendTech: D("includeLegend_tech"),
-      includeLegendRaw: D("includeLegend_raw"),
-      includeLegendAir: D("includeLegend_air"),
-      includeLegendCompare: D("includeLegend_compare"),
     });
   };
 
@@ -1086,7 +1082,7 @@ const UIManager = (sandbox) => {
     });
     sandbox.subscribe("request-toggle-accordion", toggleAccordion);
   };
-  
+
   // ★★★ 核心修正：將 validateForm 移出 return 物件，成為私有函式 ★★★
   const validateForm = () => {
     fieldConfigurations = generateFieldConfigurations(currentDryerModel);
@@ -1153,7 +1149,7 @@ const UIManager = (sandbox) => {
     getCurrentDryerModel,
     getRecordDataFromForm,
     getDomElements: () => dom,
-    
+
     // ★★★ 核心修正：在 return 物件中引用私有函式 ★★★
     validateForm: validateForm,
 

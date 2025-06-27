@@ -93,35 +93,34 @@ const EventHandler = (sandbox) => {
     safeAddEventListener(dom.exportCsvBtn, "click", () =>
       sandbox.publish("request-current-data-for-export")
     );
+    
+    // ▼▼▼【修改】簡化四個匯出圖表的按鈕邏輯 ▼▼▼
     safeAddEventListener(dom.exportChartBtn, "click", () => {
-        const includeLegend = dom.includeLegendTech.checked;
         chartManager.exportChart(
             "temperatureChart",
             "技術溫測實溫分佈圖",
             "技術溫測實溫分佈圖",
-            includeLegend
+            true // 直接包含圖例
         );
     });
     safeAddEventListener(dom.exportRawChartButton, "click", () => {
       if (dom.exportRawChartButton.disabled) return;
-      const includeLegend = dom.includeLegendRaw.checked;
       chartManager.exportChart(
         "rawTemperatureChart",
         "原始溫測數據圖",
         "原始溫測數據圖 (CSV 匯入)",
-        includeLegend
+        true // 直接包含圖例
       );
     });
     safeAddEventListener(
       dom.exportAirVolumeChartBtn,
       "click",
       () => {
-          const includeLegend = dom.includeLegendAir.checked;
           chartManager.exportChart(
               "dashboardRtoChart",
               "風量比較圖",
               "風量比較圖",
-              includeLegend
+              true // 直接包含圖例
           );
       }
     );
@@ -129,15 +128,16 @@ const EventHandler = (sandbox) => {
       dom.exportTempCompareChartBtn,
       "click",
       () => {
-          const includeLegend = dom.includeLegendCompare.checked;
           chartManager.exportChart(
               "dashboardTempChart",
               "溫度比較圖",
               "溫度比較圖",
-              includeLegend
+              true // 直接包含圖例
           );
       }
     );
+    // ▲▲▲【修改】簡化四個匯出圖表的按鈕邏輯 ▲▲▲
+
     safeAddEventListener(dom.clearDataBtn, "click", () =>
       sandbox.publish("request-confirm", {
         message: "您確定要清除所有本地儲存的數據嗎？此操作無法復原！",
@@ -163,18 +163,25 @@ const EventHandler = (sandbox) => {
     });
 
     // --- 圖表互動按鈕 ---
+    // ▼▼▼【修改】讓一個勾選框控制三個圖表 ▼▼▼
     safeAddEventListener(dom.toggleDataLabelsBtn, "click", (e) => {
+        const isVisible = e.target.checked;
+    
+        // 發布事件給三個相關圖表 (刻意排除了原始數據圖)
         sandbox.publish("request-toggle-datalabels", {
-            chartId: 'temperatureChart',
-            visible: e.target.checked
+            chartId: 'temperatureChart',      // 技術溫測實溫分佈圖
+            visible: isVisible
+        });
+        sandbox.publish("request-toggle-datalabels", {
+            chartId: 'dashboardRtoChart',     // 風量比較圖
+            visible: isVisible
+        });
+        sandbox.publish("request-toggle-datalabels", {
+            chartId: 'dashboardTempChart',    // 技術溫測實溫比較圖
+            visible: isVisible
         });
     });
-    safeAddEventListener(document.getElementById("toggleDataLabels_air"), "click", (e) => {
-        sandbox.publish("request-toggle-datalabels", {
-            chartId: 'dashboardRtoChart',
-            visible: e.target.checked
-        });
-    });
+    // ▲▲▲【修改】讓一個勾選框控制三個圖表 ▲▲▲
     
     // --- 檔案輸入框變更事件 ---
     safeAddEventListener(dom.csvFileInput, "change", (e) => {
