@@ -126,6 +126,12 @@ const CsvHandler = (sandbox) => {
       header: true,
       dynamicTyping: true,
       skipEmptyLines: true,
+      // ▼▼▼【新增】transform 函式 ▼▼▼
+      transform: function (value) {
+        // 如果欄位的值是空字串，就回傳 null，否則回傳原值
+        return value.trim() === "" ? null : value;
+      },
+      // ▲▲▲【新增】完成 ▲▲▲
       complete: (results) => {
         sandbox.publish("hide-loader");
         if (results.errors.length) {

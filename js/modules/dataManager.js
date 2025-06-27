@@ -1,4 +1,4 @@
-// /js/modules/dataManager.js
+// /js/modules/dataManager.js (編輯防呆與動態標題修正版)
 
 import {
   LOCAL_STORAGE_KEY,
@@ -497,11 +497,30 @@ const DataManager = (sandbox) => {
     }
   };
 
+  // ▼▼▼【最終修正】解決編輯模式下圖表標題不更新的問題 ▼▼▼
   const _loadRecordForEdit = (recordId) => {
     const globalIndex = records.findIndex((r) => r.id === recordId);
     if (globalIndex !== -1) {
       editingIndex = globalIndex;
-      sandbox.publish("load-data-to-form-for-edit", records[globalIndex]);
+      const recordToEdit = records[globalIndex];
+
+      // 這個事件會觸發 UI 更新，其中包含一個會覆蓋圖表的事件
+      sandbox.publish("load-data-to-form-for-edit", recordToEdit);
+
+      // 如果有 Raw Data，我們使用 setTimeout 來確保我們的圖表更新事件
+      // 在 UI 更新完成後才執行，從而正確設定標題。
+      if (recordToEdit.rawChartData) {
+        setTimeout(() => {
+          sandbox.publish("plot-raw-data-chart", {
+            results: recordToEdit.rawChartData,
+            recordInfo: { dateTime: recordToEdit.dateTime },
+          });
+          sandbox.publish("display-historical-raw-text", {
+            rawChartData: recordToEdit.rawChartData,
+          });
+        }, 0); // timeout 設為 0，會將其推到事件佇列的末尾執行
+      }
+
       _publishDataUpdate();
     } else {
       sandbox.publish("show-message", {
@@ -510,6 +529,7 @@ const DataManager = (sandbox) => {
       });
     }
   };
+  // ▲▲▲【最終修正】完成 ▲▲▲
 
   const _cancelEdit = () => {
     editingIndex = -1;
@@ -588,10 +608,8 @@ const DataManager = (sandbox) => {
     });
   };
 
-  // ★★★ 新增：取得今日新增紀錄的函式 ★★★
   const _getDailyRecords = () => {
     const today = new Date().toISOString().slice(0, 10);
-    // 篩選出今天建立且尚未同步的紀錄
     return records.filter(
       (r) => r.dateTime && r.dateTime.startsWith(today) && !r.isSynced
     );
@@ -644,12 +662,8 @@ const DataManager = (sandbox) => {
         if (record && record.rawChartData) {
           sandbox.publish("plot-raw-data-chart", {
             results: record.rawChartData,
+            recordInfo: { dateTime: record.dateTime },
           });
-          // ▼▼▼【新增】發布顯示文字的事件 ▼▼▼
-          sandbox.publish("display-historical-raw-text", {
-            rawChartData: record.rawChartData,
-          });
-
           sandbox.publish("show-message", {
             text: "原始數據圖已載入。",
             type: "info",
@@ -670,10 +684,8 @@ const DataManager = (sandbox) => {
         _mergeImportedRecords
       );
 
-      // ★★★ 新增：監聽來自 eventHandler 的請求 ★★★
       sandbox.subscribe("request-daily-records-for-export", () => {
         const dailyRecords = _getDailyRecords();
-        // 將今日紀錄發布出去，讓 csvHandler 接收
         sandbox.publish("request-export-daily-json", { dailyRecords });
       });
 
